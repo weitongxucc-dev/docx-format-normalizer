@@ -3,102 +3,102 @@ name: "docx-format-normalizer"
 description: "Auto-normalize .docx formatting to industry standards (government docs, bidding dark-bids, CMA/CNAS testing reports, court documents, academic papers, construction plans). Invoke when user uploads a .docx and asks to fix/normalize/standardize document formatting."
 ---
 
-# DOCX Multi-Industry Document Format Normalizer
+# DOCX 多行业文档格式规范化工具
 
-## Overview
+## 概述
 
-This Skill normalizes the formatting of uploaded .docx files to match industry-specific standards. It does NOT modify business text content — only layout properties (margins, fonts, font sizes, line spacing, indentation, alignment, headers/footers, page numbers, table styles).
+本 Skill 将用户上传的 .docx 文档格式规范化为行业标准格式。**不修改正文文字内容** —— 仅修改排版属性（页边距、字体、字号、行距、缩进、对齐、页眉页脚、页码、表格样式）。
 
-### Critical Principle: Audit Before Formatting
+### 核心原则：先审查后格式化
 
-The Skill does NOT blindly accept and format whatever the user uploads. It first **audits** the document for non-compliant content, then **auto-cleans** these issues before applying industry-standard formatting. Issues found and actions taken are reported in the modification report.
+本 Skill **不会**盲目接受和格式化用户上传的任何内容。它首先**审查**文档中的不合规内容，然后**自动清理**这些问题，最后再应用行业标准格式。所有发现的问题和操作均记录在修改报告中。
 
-**Auto-detected and cleaned issues include:**
-- Colored text (non-black fonts) → set to black
-- Colored cell backgrounds → cleared to white
-- Paragraph decorative borders (lines below headings) → removed
-- Non-standard font references (Japanese fonts, Noto Sans, Courier) → replaced with standard Chinese fonts
-- Non-standard font sizes → normalized to template specifications
-- Theme accent colors → set to black
-- Table border colors → set to black
-- Style-level shading → cleared
-- Cover page navigation labels (dot-separated taglines) → removed
-- Cover page data tables → removed
-- Cover page text boxes/shapes → removed
-- Cover page layout non-compliance → restructured (title at top, date at bottom, proper spacing)
+**自动检测和清理的问题包括：**
+- 彩色文字（非黑色字体）→ 设为黑色
+- 彩色单元格背景 → 清除为白色
+- 段落装饰边框（标题下横线）→ 删除
+- 非标准字体引用（日文字体、Noto Sans、Courier）→ 替换为标准中文字体
+- 非标准字号 → 规范化为模板规格
+- 主题强调色 → 设为黑色
+- 表格边框色 → 设为黑色
+- 样式级底纹 → 清除
+- 封面导航标签（点号分隔的标签行）→ 删除
+- 封面数据表格 → 删除
+- 封面文本框/图形 → 删除
+- 封面布局不合规 → 重构（标题在上、日期在下、适当留白）
 
-**Output filename rule**: Output files MUST use Chinese names matching the industry, e.g. `01_党政机关公文.docx`, NOT English names like `government_document_output.docx`.
+**输出文件名规则**：输出文件必须使用与行业匹配的中文名，如 `01_党政机关公文.docx`，不能用英文名如 `government_document_output.docx`。
 
-### Supported Industries
+### 支持的行业格式
 
-| ID | Industry | Standard/Reference |
-|----|----------|-------------------|
-| 1 | Government Official Document | GB/T 9704-2012 |
-| 2 | Bidding Dark-Bid (Jiangsu) | Province-specific |
-| 3 | Bidding Dark-Bid (Guizhou) | Province-specific |
-| 4 | Bidding Dark-Bid (Ji'an) | City-specific |
-| 5 | CMA/CNAS Testing Report | DB61/T 1327.5-2020 |
-| 6 | Court Litigation Document | Supreme Court Standard |
-| 7 | Academic Paper | GB/T 7714 |
-| 8 | Construction Plan | Industry Convention |
+| 编号 | 行业 | 标准依据 |
+|------|------|----------|
+| 1 | 党政机关公文 | GB/T 9704-2012 |
+| 2 | 招投标暗标（江苏） | 省级规范 |
+| 3 | 招投标暗标（贵州） | 省级规范 |
+| 4 | 招投标暗标（吉安） | 市级规范 |
+| 5 | CMA/CNAS检测报告 | DB61/T 1327.5-2020 |
+| 6 | 法院诉讼文书 | 最高法院标准 |
+| 7 | 学术论文 | GB/T 7714 |
+| 8 | 工程施工方案 | 行业惯例 |
 
-### Constraints
+### 约束条件
 
-- **Input**: Only `.docx` files (not `.doc`, `.pdf`)
-- **Scope**: Formatting/layout correction only; never alter body text content
-- **Dark-bid mode**: Force-clears bold, italic, underline, colored fonts, headers, footers, page numbers
-- **Government docs**: Precise margins (top 37mm, left 28mm), 22 lines/page, 28 chars/line
-- **Testing reports**: Per-page-zone formatting (cover/home/data/attachment pages differ)
+- **输入**：仅支持 `.docx` 格式文件（不支持 `.doc`、`.pdf`）
+- **范围**：仅修改格式/排版，不修改正文文字内容
+- **暗标模式**：强制清除加粗、斜体、下划线、彩色字体、页眉、页脚、页码
+- **党政公文**：精确页边距（上37mm、左28mm），每页22行×28字
+- **检测报告**：按页面分区格式化（封面/首页/数据页/附件页格式不同）
 
 ---
 
-## Workflow
+## 工作流程
 
-### Step 0: Environment Setup (MANDATORY)
+### 第0步：环境配置（必选）
 
-Before processing any document, set up the Python environment:
+处理任何文档前，先配置 Python 环境：
 
 ```bash
-# Run the setup script (creates a virtual environment with correct dependencies)
+# 运行配置脚本（创建带正确依赖的虚拟环境）
 bash scripts/setup.sh
 ```
 
-This script will:
-1. Find a suitable Python (3.11+)
-2. Create an isolated virtual environment in `.venv/`
-3. Install `python-docx` and `lxml<6` (pinned to avoid compatibility issues)
-4. Output the Python path to use for processing
+此脚本会：
+1. 查找合适的 Python（3.11+）
+2. 在 `.venv/` 中创建独立虚拟环境
+3. 安装 `python-docx` 和 `lxml<6`（锁定版本避免兼容性问题）
+4. 输出用于处理的 Python 路径
 
-**The script outputs the Python path** — use this path (not `python3`) for all subsequent commands. Example output: `SUCCESS: Python path = /path/to/.venv/bin/python`
+**脚本会输出 Python 路径** —— 后续所有命令使用此路径（而非 `python3`）。示例输出：`SUCCESS: Python path = /path/to/.venv/bin/python`
 
-If setup fails, see Exception Handling below.
+如配置失败，见下方"异常处理"。
 
-### Step 1: Receive Input
+### 第1步：接收输入
 
-When the user uploads a .docx file and asks to normalize/fix/standardize its formatting:
+当用户上传 .docx 文件并要求规范化/修复/标准化格式时：
 
-1. Confirm the file is `.docx` format. If not, inform the user: "仅支持 .docx 格式文件，请转换后重新上传。"
-2. Ask the user to select an industry type from the 8 supported options above.
-3. If the user selects a bidding dark-bid type, confirm the province/city variant.
+1. 确认文件为 `.docx` 格式。如不是，告知用户："仅支持 .docx 格式文件，请转换后重新上传。"
+2. 请用户从上述8种支持格式中选择目标行业类型。
+3. 如用户选择暗标类型，确认省份/城市变体。
 
-### Step 2: Load Template Configuration
+### 第2步：加载模板配置
 
-Based on the user's selected industry, identify the corresponding JSON template file:
+根据用户选择的行业，识别对应的 JSON 模板文件：
 
-| Industry | Template File |
-|----------|--------------|
-| Government Document | `templates/government_document.json` |
-| Dark-Bid (Jiangsu) | `templates/bidding_dark_jiangsu.json` |
-| Dark-Bid (Guizhou) | `templates/bidding_dark_guizhou.json` |
-| Dark-Bid (Ji'an) | `templates/bidding_dark_jian.json` |
-| Testing Report | `templates/testing_report.json` |
-| Court Document | `templates/court_document.json` |
-| Academic Paper | `templates/academic_paper.json` |
-| Construction Plan | `templates/construction_plan.json` |
+| 行业 | 模板文件 |
+|------|----------|
+| 党政机关公文 | `templates/government_document.json` |
+| 江苏暗标 | `templates/bidding_dark_jiangsu.json` |
+| 贵州暗标 | `templates/bidding_dark_guizhou.json` |
+| 吉安暗标 | `templates/bidding_dark_jian.json` |
+| CMA/CNAS检测报告 | `templates/testing_report.json` |
+| 法院诉讼文书 | `templates/court_document.json` |
+| 学术论文 | `templates/academic_paper.json` |
+| 工程施工方案 | `templates/construction_plan.json` |
 
-### Step 3: Execute Processing Engine
+### 第3步：执行处理引擎
 
-Run the script using the Python path from Step 0:
+使用第0步输出的 Python 路径运行脚本：
 
 ```bash
 <PYTHON_PATH> scripts/docx_formatter.py \
@@ -108,7 +108,7 @@ Run the script using the Python path from Step 0:
   --report <modification_report.json>
 ```
 
-Example:
+示例：
 ```bash
 /path/to/.venv/bin/python scripts/docx_formatter.py \
   --input /path/to/document.docx \
@@ -117,24 +117,24 @@ Example:
   --report /path/to/modification_report.json
 ```
 
-The script will:
-1. Analyze document structure (identify cover page, TOC, body sections)
-2. **Audit & auto-cleanup**: Detect colored text, colored cell backgrounds, non-standard font sizes; auto-fix by setting text to black, clearing cell backgrounds, and flagging for normalization
-3. Modify style definitions (styles.xml) for persistent formatting
-4. Apply page setup (margins, paper size, grid)
-5. Apply title heading formatting (if `title_heading` in template)
-6. Apply body text formatting (font, size, line spacing, indent)
-7. Apply heading formatting (unified style + text pattern detection)
-8. Apply hierarchy font differentiation (黑体/楷体/仿宋 etc.)
-9. Apply header/footer rules (clear or update)
-10. Apply table formatting (borders, cell fonts)
-11. Execute force-clear rules (if dark-bid mode)
-12. Apply per-page-zone formatting (if testing report)
-13. Generate a modification report JSON (includes audit findings + formatting changes)
+脚本执行流程：
+1. 分析文档结构（识别封面页、目录、正文区域）
+2. **审查与自动清理**：检测彩色文字、彩色单元格、非标准字号；自动修复——文字设为黑色、清除单元格背景、标记为规范化
+3. 修改样式定义（styles.xml）确保持久格式化
+4. 应用页面设置（边距、纸张大小、网格）
+5. 应用标题格式（如模板中有 `title_heading`）
+6. 应用正文格式（字体、字号、行距、缩进）
+7. 应用标题格式（统一样式 + 文本模式识别）
+8. 应用层次字体区分（黑体/楷体/仿宋等）
+9. 应用页眉页脚规则（清除或更新）
+10. 应用表格格式（边框、单元格字体）
+11. 执行强制清除规则（暗标模式）
+12. 按页面分区格式化（检测报告）
+13. 生成修改报告 JSON（含审查结果 + 格式变更）
 
-### Step 4: Verify Output (RECOMMENDED)
+### 第4步：验证输出（推荐）
 
-Run the validation script to check key formatting properties:
+运行验证脚本检查关键格式属性：
 
 ```bash
 <PYTHON_PATH> scripts/validate.py \
@@ -142,11 +142,11 @@ Run the validation script to check key formatting properties:
   --template templates/<template_name>.json
 ```
 
-This checks: page margins, body font, heading fonts, table formatting, **content compliance** (no colored text, no colored cell backgrounds), and reports PASS/FAIL for each.
+检查项：页边距、正文字体、标题字体、表格格式、**内容合规性**（无彩色文字、无彩色单元格），并报告每项 PASS/FAIL。
 
-### Step 5: Visual Check (RECOMMENDED)
+### 第5步：视觉检查（推荐）
 
-Run the visual check script to verify the output **looks** correct by rendering to images and analyzing for colored content:
+运行视觉检查脚本，通过渲染为图片并分析彩色内容来验证输出**看起来**正确：
 
 ```bash
 <PYTHON_PATH> scripts/visual_check.py \
@@ -155,38 +155,38 @@ Run the visual check script to verify the output **looks** correct by rendering 
   --save-images <output_dir>
 ```
 
-This performs:
-1. Converts docx to PDF via LibreOffice
-2. Converts PDF to page images (30 DPI)
-3. Analyzes each page image for colored (non-grayscale) pixels
-4. Reports PASS/FAIL for color detection
-5. Optionally saves page images for AI visual inspection
+执行内容：
+1. 通过 LibreOffice 将 docx 转为 PDF
+2. 将 PDF 转为页面图片（30 DPI）
+3. 分析每页图片是否有彩色（非灰度）像素
+4. 报告颜色检测 PASS/FAIL
+5. 可选保存页面图片供 AI 视觉检查
 
-The visual check catches issues that XML-level validation cannot, such as:
-- Table border colors inherited from table styles
-- Theme accent colors referenced by style definitions
-- Any residual colored visual elements
+视觉检查能发现 XML 级验证无法发现的问题：
+- 表格样式继承的边框色
+- 样式定义引用的主题强调色
+- 任何残留的彩色视觉元素
 
-### Step 6: Output Results
+### 第6步：输出结果
 
-Present the results to the user:
+向用户呈现结果：
 
-1. **Confirmation**: Display the selected industry and template parameters
-2. **Processing Complete**: Brief summary of modifications made
-3. **Modification Report**: Table showing `序号 | 修改位置 | 修改前 | 修改后`
-4. **Output File**: Provide the normalized .docx file path
-5. **Verification Report**: Show PASS/FAIL results from validate.py
-6. **Manual Review Suggestions**: List items the user should visually verify
+1. **确认信息**：显示选择的行业和模板参数
+2. **处理完成**：简要说明修改项数
+3. **修改报告**：表格展示 `序号 | 修改位置 | 修改前 | 修改后`
+4. **输出文件**：提供规范化后的 .docx 文件路径
+5. **验证报告**：显示 validate.py 的 PASS/FAIL 结果
+6. **人工检查建议**：列出用户应视觉确认的项目
 
 ---
 
-## Quick Start (One-Liner)
+## 快速开始（一行命令）
 
 ```bash
-# Setup (run once)
+# 环境配置（运行一次）
 bash scripts/setup.sh
 
-# Process a document (replace paths)
+# 处理文档（替换路径）
 $(cat .venv/.python_path 2>/dev/null || echo ".venv/bin/python") scripts/docx_formatter.py \
   --input "your_document.docx" \
   --template templates/government_document.json \
@@ -196,110 +196,110 @@ $(cat .venv/.python_path 2>/dev/null || echo ".venv/bin/python") scripts/docx_fo
 
 ---
 
-## Industry Format Rules (Authoritative Reference)
+## 行业格式规则（权威参考）
 
-### 1. Government Official Document (GB/T 9704-2012)
+### 1. 党政机关公文（GB/T 9704-2012）
 
-| Parameter | Value |
-|-----------|-------|
-| Paper | A4 (210mm × 297mm) |
-| Top margin (天头) | 37mm ± 1mm |
-| Left margin (订口) | 28mm ± 1mm |
-| Content area (版心) | 156mm × 225mm |
-| Lines per page | 22 |
-| Chars per line | 28 |
-| Body text font | 仿宋_GB2312 |
-| Body text size | 3号 (16pt) |
-| Title font | 小标宋体 |
-| Title size | 2号 (22pt) |
-| Text color | Black |
-| Page number font | 宋体, 4号 (14pt) |
-| Printing | Double-sided, left binding |
+| 参数 | 值 |
+|------|------|
+| 纸张 | A4（210mm × 297mm） |
+| 上边距（天头） | 37mm ± 1mm |
+| 左边距（订口） | 28mm ± 1mm |
+| 版心 | 156mm × 225mm |
+| 每页行数 | 22 |
+| 每行字数 | 28 |
+| 正文字体 | 仿宋_GB2312 |
+| 正文字号 | 三号（16pt） |
+| 标题字体 | 小标宋体 |
+| 标题字号 | 二号（22pt） |
+| 文字颜色 | 黑色 |
+| 页码字体 | 宋体，四号（14pt） |
+| 印刷 | 双面，左侧装订 |
 
-**Hierarchy font differentiation**:
-- Level 1 (一、): 黑体 (SimHei)
-- Level 2 (（一）): 楷体 (KaiTi)
-- Level 3 (1.): 仿宋 (FangSong)
-- Level 4 (（1）): 仿宋 (FangSong)
+**层次字体区分**：
+- 一级（一、）：黑体
+- 二级（（一））：楷体
+- 三级（1.）：仿宋
+- 四级（（1））：仿宋
 
-### 2. Bidding Dark-Bid
+### 2. 招投标暗标
 
-**Force-clear rules (ALL variants)**:
-- Clear ALL bold, italic, underline, strikethrough
-- Clear ALL colored text (set to black)
-- Remove ALL headers, footers, page numbers
-- No table of contents
-- Clear hyperlink coloring and custom char spacing/scale
+**强制清除规则（所有变体）**：
+- 清除所有加粗、斜体、下划线、删除线
+- 清除所有彩色文字（设为黑色）
+- 删除所有页眉、页脚、页码
+- 不设目录
+- 清除超链接颜色和自定义字符间距/缩放
 
-**Jiangsu variant**: 宋体 小四号 12pt, single spacing, 2.5cm margins all sides
-**Guizhou variant**: 宋体 四号 14pt, chart text 五号 10.5pt, Arabic hierarchy
-**Ji'an variant**: 宋体 四号 14pt, 1.5x spacing, margins top/bottom 2.5cm left 3.0cm right 2.5cm
+**江苏变体**：宋体 小四号 12pt，单倍行距，四周2.5cm边距
+**贵州变体**：宋体 四号 14pt，图表文字五号 10.5pt，阿拉伯数字层次
+**吉安变体**：宋体 四号 14pt，1.5倍行距，上下2.5cm 左3.0cm 右2.5cm边距
 
-### 3. CMA/CNAS Testing Report
+### 3. CMA/CNAS检测报告
 
-**Per-page-zone formatting (CRITICAL)**:
-- Cover: title 黑体 60pt bold, report number 仿宋 三号, lab name 黑体 一号 bold
-- Notice page: title 黑体 小二号 bold, content 黑体 小三号
-- Home/Data/Attachment pages: header 黑体 小二号 bold, content 仿宋 小四号
+**按页面分区格式化（关键）**：
+- 封面：标题 黑体 60pt 加粗，报告编号 仿宋 三号，实验室名称 黑体 一号 加粗
+- 说明页：标题 黑体 小二号 加粗，内容 黑体 小三号
+- 首页/数据页/附件页：表头 黑体 小二号 加粗，内容 仿宋 小四号
 
-### 4. Court Litigation Document
+### 4. 法院诉讼文书
 
-| Parameter | Value |
-|-----------|-------|
-| Court name font | 宋体 bold, 2号 (22pt), char spacing +2pt |
-| Document name font | 大标宋体 bold, 1号 (26pt) |
-| Case number & body | 仿宋, 3号 (16pt) |
-| Top/Bottom margins | 30mm / 27mm |
-| Page number | 4号 white Arabic numerals |
+| 参数 | 值 |
+|------|------|
+| 法院名称字体 | 宋体 加粗，二号（22pt），字符间距+2pt |
+| 文书名称字体 | 大标宋体 加粗，一号（26pt） |
+| 案号及正文 | 仿宋，三号（16pt） |
+| 上下边距 | 30mm / 27mm |
+| 页码 | 四号 白体阿拉伯数字 |
 
-### 5. Academic Paper (GB/T 7714)
+### 5. 学术论文（GB/T 7714）
 
-| Parameter | Value |
-|-----------|-------|
-| Chinese body font | 宋体, 小四号 (12pt) |
-| English/digit font | Times New Roman, 小四号 (12pt) |
-| Line spacing | 1.5x |
-| Title font | 黑体, 小四号 (12pt) |
-| Abstract font | 宋体, 五号 (10.5pt) |
-| References | 宋体/TNR, 五号 (10.5pt) |
-| CJK/Latin font separation | REQUIRED |
+| 参数 | 值 |
+|------|------|
+| 中文正文字体 | 宋体，小四号（12pt） |
+| 英文/数字字体 | Times New Roman，小四号（12pt） |
+| 行距 | 1.5倍 |
+| 标题字体 | 黑体，小四号（12pt） |
+| 摘要字体 | 宋体，五号（10.5pt） |
+| 参考文献 | 宋体/TNR，五号（10.5pt） |
+| 中英文分离 | 必须 |
 
-### 6. Construction Plan
+### 6. 工程施工方案
 
-| Parameter | Value |
-|-----------|-------|
-| Margins | Left 3.17cm, others 2.5cm |
-| Body font | 宋体, 四号 (14pt) |
-| Title font | 黑体, 三号 (16pt) |
-| Line spacing | 1.5x |
-| Hierarchy | Arabic decimal (1, 1.1, 1.1.1) |
-| Western font | Times New Roman |
-| Table text | One size smaller than body |
-
----
-
-## Exception Handling
-
-1. **Not a .docx file**: "仅支持 .docx 格式文件，请将文件转换为 .docx 后重新上传。"
-2. **File corrupted**: "文档无法解析，文件可能已损坏，请检查后重新上传。"
-3. **No industry selected**: "请选择目标行业类型：1.党政机关公文 2.招投标暗标 3.CMA/CNAS检测报告 4.法院诉讼文书 5.学术论文 6.工程施工方案。（暗标需补充省份参数）"
-4. **python-docx not installed / lxml crash**:
-   - Run `bash scripts/setup.sh` to create a fresh virtual environment
-   - If lxml still crashes, try: `pip install 'lxml>=4.9,<6' --force-reinstall`
-   - If using system Python, create an isolated venv: `python3 -m venv .venv && .venv/bin/pip install 'python-docx>=0.8.11' 'lxml>=4.9,<6'`
-5. **Document has no Word heading styles**: The script will still process body text and apply hierarchy font rules via text pattern matching.
-6. **Document has nested tables**: The script traverses all table cells including nested tables.
-7. **Paragraphs with no runs (images/objects)**: These are skipped during run-level formatting.
+| 参数 | 值 |
+|------|------|
+| 边距 | 左3.17cm，其余2.5cm |
+| 正文字体 | 宋体，四号（14pt） |
+| 标题字体 | 黑体，三号（16pt） |
+| 行距 | 1.5倍 |
+| 层次编号 | 阿拉伯小数（1, 1.1, 1.1.1） |
+| 西文字体 | Times New Roman |
+| 表格文字 | 比正文小一号 |
 
 ---
 
-## Key Technical Constraints
+## 异常处理
 
-1. **Never modify body text** — only change formatting/layout properties
-2. **Cover page protection** — cover page paragraphs keep their original alignment, only font/size is updated
-3. **Style-level + run-level modification** — both styles.xml definitions AND direct run formatting are updated
-4. **Testing reports must use per-page-zone formatting** — not uniform whole-document styling
-5. **Government documents need precise page geometry** — 37mm/28mm margins, 22 lines, 28 chars
-6. **Dark-bids need deep traversal** — walk every run, paragraph, table cell, header, footer to clear forbidden formatting
-7. **Fixed line spacing requires zero paragraph spacing** — when line_spacing_rule is "fixed", space_before and space_after must be 0
-8. **CJK/Latin font separation** — Chinese uses font_cn (eastAsia), English/digits use font_en (ascii/hAnsi)
+1. **非 .docx 文件**："仅支持 .docx 格式文件，请将文件转换为 .docx 后重新上传。"
+2. **文件损坏**："文档无法解析，文件可能已损坏，请检查后重新上传。"
+3. **未选择行业**："请选择目标行业类型：1.党政机关公文 2.招投标暗标 3.CMA/CNAS检测报告 4.法院诉讼文书 5.学术论文 6.工程施工方案。（暗标需补充省份参数）"
+4. **python-docx 未安装 / lxml 崩溃**：
+   - 运行 `bash scripts/setup.sh` 创建全新虚拟环境
+   - 如 lxml 仍崩溃，尝试：`pip install 'lxml>=4.9,<6' --force-reinstall`
+   - 如使用系统 Python，创建独立 venv：`python3 -m venv .venv && .venv/bin/pip install 'python-docx>=0.8.11' 'lxml>=4.9,<6'`
+5. **文档无 Word 标题样式**：脚本仍会处理正文，并通过文本模式匹配应用层次字体规则。
+6. **文档有嵌套表格**：脚本会遍历所有表格单元格，包括嵌套表格。
+7. **段落无 run（图片/对象）**：在 run 级格式化时跳过。
+
+---
+
+## 关键技术约束
+
+1. **不修改正文** —— 仅修改格式/排版属性
+2. **封面保护** —— 封面段落保留原始对齐方式，仅更新字体/字号
+3. **样式级 + run 级修改** —— 同时更新 styles.xml 定义和直接 run 格式
+4. **检测报告必须按页面分区格式化** —— 不能统一全文样式
+5. **党政公文需精确页面几何参数** —— 37mm/28mm 边距，22行，28字
+6. **暗标需深度遍历** —— 遍历每个 run、段落、表格单元格、页眉、页脚以清除禁止格式
+7. **固定行距需零段间距** —— 当 line_spacing_rule 为 "fixed" 时，space_before 和 space_after 必须为 0
+8. **中英文分离** —— 中文使用 font_cn（eastAsia），英文/数字使用 font_en（ascii/hAnsi）
