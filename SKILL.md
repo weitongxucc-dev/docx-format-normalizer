@@ -11,7 +11,19 @@ This Skill normalizes the formatting of uploaded .docx files to match industry-s
 
 ### Critical Principle: Audit Before Formatting
 
-The Skill does NOT blindly accept and format whatever the user uploads. It first **audits** the document for non-compliant content (colored text, colored cell backgrounds, non-standard font sizes), then **auto-cleans** these issues before applying industry-standard formatting. Issues found and actions taken are reported in the modification report.
+The Skill does NOT blindly accept and format whatever the user uploads. It first **audits** the document for non-compliant content, then **auto-cleans** these issues before applying industry-standard formatting. Issues found and actions taken are reported in the modification report.
+
+**Auto-detected and cleaned issues include:**
+- Colored text (non-black fonts) → set to black
+- Colored cell backgrounds → cleared to white
+- Paragraph decorative borders (lines below headings) → removed
+- Non-standard font references (Japanese fonts, Noto Sans, Courier) → replaced with standard Chinese fonts
+- Non-standard font sizes → normalized to template specifications
+- Theme accent colors → set to black
+- Table border colors → set to black
+- Style-level shading → cleared
+
+**Output filename rule**: Output files MUST use Chinese names matching the industry, e.g. `01_党政机关公文.docx`, NOT English names like `government_document_output.docx`.
 
 ### Supported Industries
 

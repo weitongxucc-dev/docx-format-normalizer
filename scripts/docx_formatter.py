@@ -153,6 +153,23 @@ class DocxFormatter:
                                             elem.attrib[attr_name] = 'text1'
                                             changed = True
 
+                            for rFonts in root.iter(f'{{{w_ns}}}rFonts'):
+                                for attr_name in list(rFonts.attrib.keys()):
+                                    short = attr_name.split('}')[-1] if '}' in attr_name else attr_name
+                                    val = rFonts.attrib[attr_name]
+                                    if val in ('Noto Sans CJK SC', 'Noto Sans SC', 'Noto Serif CJK SC'):
+                                        rFonts.attrib[attr_name] = '宋体'
+                                        changed = True
+                                    elif val in ('MS ゴシック', 'MS ゴシック', 'MS Gothic'):
+                                        rFonts.attrib[attr_name] = '宋体'
+                                        changed = True
+                                    elif val in ('MS 明朝', 'MS Mincho', 'MS 明朝'):
+                                        rFonts.attrib[attr_name] = '宋体'
+                                        changed = True
+                                    elif val == 'Courier':
+                                        rFonts.attrib[attr_name] = 'Times New Roman'
+                                        changed = True
+
                         if changed:
                             zout.writestr(item, etree.tostring(
                                 root, xml_declaration=True,
@@ -186,6 +203,7 @@ class DocxFormatter:
         colored_text = self._audit_colored_text()
         colored_cells = self._audit_colored_cells()
         nonstandard_sizes = self._audit_font_sizes()
+        para_borders = self._audit_paragraph_borders()
 
         if colored_text:
             audit_issues.append({
@@ -205,6 +223,15 @@ class DocxFormatter:
             })
             self._cleanup_colored_cells()
 
+        if para_borders:
+            audit_issues.append({
+                "issue": "paragraph_border",
+                "count": para_borders,
+                "detail": f"发现{para_borders}处段落装饰线",
+                "action": "已全部删除"
+            })
+            self._cleanup_paragraph_borders()
+
         if nonstandard_sizes:
             audit_issues.append({
                 "issue": "nonstandard_font_size",
@@ -214,9 +241,34 @@ class DocxFormatter:
             })
 
         if audit_issues:
+            parts = []
+            if colored_text: parts.append(f"彩色文字{colored_text}")
+            if colored_cells: parts.append(f"彩色背景{colored_cells}")
+            if para_borders: parts.append(f"段落装饰线{para_borders}")
+            if nonstandard_sizes: parts.append(f"非标准字号{nonstandard_sizes}")
             self._record("文档审查", f"发现{len(audit_issues)}类问题",
-                         f"彩色文字{colored_text}/彩色背景{colored_cells}/非标准字号{nonstandard_sizes}",
+                         "/".join(parts),
                          "已自动清理，详见报告")
+
+    def _audit_paragraph_borders(self):
+        """Count paragraphs with decorative borders (lines below headings etc.)."""
+        count = 0
+        for para in self.doc.paragraphs:
+            pPr = para._element.find(qn('w:pPr'))
+            if pPr is not None:
+                pBdr = pPr.find(qn('w:pBdr'))
+                if pBdr is not None and len(list(pBdr)) > 0:
+                    count += 1
+        return count
+
+    def _cleanup_paragraph_borders(self):
+        """Remove all paragraph decorative borders."""
+        for para in self.doc.paragraphs:
+            pPr = para._element.find(qn('w:pPr'))
+            if pPr is not None:
+                pBdr = pPr.find(qn('w:pBdr'))
+                if pBdr is not None:
+                    pPr.remove(pBdr)
 
     def _audit_colored_text(self):
         """Count runs with non-black font color."""

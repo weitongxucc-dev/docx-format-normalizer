@@ -320,6 +320,19 @@ class FormatValidator:
                     f"0 colored cell backgrounds (clean)",
                     f"{colored_cells} colored cell backgrounds remain")
 
+        para_borders = 0
+        for para in self.doc.paragraphs:
+            pPr = para._element.find(qn('w:pPr'))
+            if pPr is not None:
+                pBdr = pPr.find(qn('w:pBdr'))
+                if pBdr is not None and len(list(pBdr)) > 0:
+                    para_borders += 1
+
+        self._check("Content: No Paragraph Borders",
+                    para_borders == 0,
+                    f"0 paragraph borders (clean)",
+                    f"{para_borders} paragraph borders remain")
+
     def _report(self):
         print(f"\n{'='*60}")
         print(f"  Format Validation Report")
