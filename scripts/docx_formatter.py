@@ -56,10 +56,20 @@ class DocxFormatter:
         return self.template.get("industry_name", "Unknown")
 
     def load_document(self, input_path):
+        if not os.path.exists(input_path):
+            raise FileNotFoundError(f"输入文件不存在: {input_path}")
+        if not input_path.lower().endswith('.docx'):
+            raise ValueError(f"仅支持 .docx 格式文件，当前文件: {os.path.basename(input_path)}")
+        try:
+            import zipfile
+            if not zipfile.is_zipfile(input_path):
+                raise ValueError(f"文件不是有效的 docx 格式（ZIP 容器损坏）: {input_path}")
+        except ImportError:
+            pass
         try:
             self.doc = Document(input_path)
         except Exception as e:
-            raise RuntimeError(f"Failed to parse docx file: {e}")
+            raise RuntimeError(f"解析 docx 文件失败: {e}")
 
     def run(self, input_path, output_path):
         self.load_document(input_path)
@@ -782,7 +792,7 @@ class DocxFormatter:
                      f"{font_cn} {font_size}pt {line_rule or ''}")
 
     def _set_style_east_asia_font(self, style, font_cn, font_en):
-        """Set eastAsia font on a style element."""
+        """Set eastAsia font on a style element, with macOS fallback."""
         rpr = style.element.find(qn('w:rPr'))
         if rpr is None:
             rpr = OxmlElement('w:rPr')
@@ -794,6 +804,10 @@ class DocxFormatter:
         rFonts.set(qn('w:eastAsia'), font_cn)
         rFonts.set(qn('w:ascii'), font_en or font_cn)
         rFonts.set(qn('w:hAnsi'), font_en or font_cn)
+        font_fallback = self.template.get("font_fallback", {})
+        alt_font = font_fallback.get(font_cn)
+        if alt_font:
+            rFonts.set(qn('w:cs'), alt_font)
 
     # ── Page Setup ──────────────────────────────────────────
 
@@ -1025,6 +1039,10 @@ class DocxFormatter:
                 rFonts.set(qn('w:eastAsia'), font_cn)
                 rFonts.set(qn('w:ascii'), font_en or font_cn)
                 rFonts.set(qn('w:hAnsi'), font_en or font_cn)
+                font_fallback = self.template.get("font_fallback", {})
+                alt_font = font_fallback.get(font_cn)
+                if alt_font:
+                    rFonts.set(qn('w:cs'), alt_font)
                 changes.append(f"字体→{font_cn}")
 
         if font_size and (run.font.size is None or run.font.size != Pt(font_size)):
@@ -1512,21 +1530,70 @@ class DocxFormatter:
         if not page_zones:
             return
 
-        current_zone = None
-        para_index = 0
-        total_paras = len(self.doc.paragraphs)
+        zone_boundaries = {}
+        current_zone_id = page_zones[0].get("zone_id") if page_zones else None
 
         for i, para in enumerate(self.doc.paragraphs):
             text = para.text.strip()
-            zone = self._detect_page_zone(text, i, total_paras, page_zones, current_zone)
-
-            if zone:
-                current_zone = zone.get("zone_id")
-                elements = zone.get("elements", [])
-                for elem in elements:
-                    if self._match_zone_element(para, elem, i):
-                        self._apply_zone_element(para, elem)
+            for zone in page_zones:
+                keywords = zone.get("detection_keywords", [])
+                for kw in keywords:
+                    if kw in text:
+                        current_zone_id = zone.get("zone_id")
+                        zone_boundaries[i] = current_zone_id
                         break
+                if zone_boundaries.get(i) == current_zone_id and i in zone_boundaries:
+                    break
+            zone_boundaries[i] = current_zone_id
+
+        zone_map = {z.get("zone_id"): z for z in page_zones}
+        zone_counts = {}
+
+        for i, para in enumerate(self.doc.paragraphs):
+            if not para.text.strip():
+                continue
+
+            zone_id = zone_boundaries.get(i, current_zone_id)
+            zone = zone_map.get(zone_id)
+            if not zone:
+                continue
+
+            elements = zone.get("elements", [])
+            matched = False
+            for elem in elements:
+                if self._match_zone_element(para, elem, i):
+                    self._apply_zone_element(para, elem, zone_id)
+                    matched = True
+                    break
+
+            if not matched:
+                default_elem = self._get_zone_default_element(zone)
+                if default_elem and para.text.strip():
+                    self._apply_zone_element(para, default_elem, zone_id)
+
+            zone_counts[zone_id] = zone_counts.get(zone_id, 0) + 1
+
+        for zone_id, count in zone_counts.items():
+            zone = zone_map.get(zone_id, {})
+            zone_name = zone.get("zone_name", zone_id)
+            self._record("页面分区", zone_name, "—",
+                         f"{count}段已按{zone_name}格式处理")
+
+    def _get_zone_default_element(self, zone):
+        """Get the default formatting element for a zone (middle/body element)."""
+        elements = zone.get("elements", [])
+        for elem in elements:
+            pos = elem.get("position", "")
+            if pos in ("middle", "line_2_plus", "body"):
+                return elem
+        default_font = zone.get("default_font", "仿宋")
+        default_size = zone.get("default_font_size_pt", 12)
+        return {
+            "font": default_font,
+            "font_size_pt": default_size,
+            "bold": False,
+            "alignment": "left"
+        }
 
     def _detect_page_zone(self, text, para_idx, total_paras, page_zones, current_zone):
         for zone in page_zones:
@@ -1549,9 +1616,16 @@ class DocxFormatter:
         content_hint = elem.get("content_hint", "")
         if content_hint and content_hint in para.text:
             return True
+
+        position = elem.get("position", "")
+        if position == "line_1" and idx == 0:
+            return True
+        if position == "lines_1_2" and idx <= 1:
+            return True
+
         return False
 
-    def _apply_zone_element(self, para, elem):
+    def _apply_zone_element(self, para, elem, zone_id=""):
         font = elem.get("font", "仿宋")
         font_size = elem.get("font_size_pt", 12)
         bold = elem.get("bold", False)
@@ -1569,10 +1643,6 @@ class DocxFormatter:
         for run in para.runs:
             self._format_run(run, font, "Times New Roman", font_size, "000000")
             run.font.bold = bold
-
-        preview = para.text[:30] + ("..." if len(para.text) > 30 else "")
-        self._record("页面分区", preview, "—",
-                     f"{font} {font_size}pt {'加粗' if bold else ''}")
 
     # ── Report Generation ────────────────────────────────────
 

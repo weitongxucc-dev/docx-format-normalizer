@@ -16,12 +16,33 @@
     "gutter_mm": 0
   },
   "cover_page_rules": {
-    "allowed_elements": ["project_number", "document_type"],
-    "disallowed_elements": ["navigation_labels", "data_tables", "text_boxes", "decorative_lines", "organization_name", "logos", "page_number", "date", "watermark"],
+    "allowed_elements": [
+      "project_number",
+      "document_type"
+    ],
+    "disallowed_elements": [
+      "navigation_labels",
+      "data_tables",
+      "text_boxes",
+      "decorative_lines",
+      "organization_name",
+      "logos",
+      "page_number",
+      "date",
+      "watermark"
+    ],
     "layout": {
       "elements": [
-        {"name": "project_name", "position": "top_third", "alignment": "center"},
-        {"name": "document_type", "position": "middle", "alignment": "center"}
+        {
+          "name": "project_name",
+          "position": "top_third",
+          "alignment": "center"
+        },
+        {
+          "name": "document_type",
+          "position": "middle",
+          "alignment": "center"
+        }
       ],
       "vertical_distribution": "balanced",
       "notes": "暗标封面极简，仅项目名称和文件类型，禁止一切可识别信息（含日期）"
@@ -109,5 +130,16 @@
   "printing": {
     "double_sided": false,
     "binding_side": "left"
+  },
+  "font_fallback": {
+    "小标宋体": "STSong",
+    "仿宋_GB2312": "STFangsong",
+    "仿宋": "STFangsong",
+    "黑体": "STHeiti",
+    "楷体": "STKaiti",
+    "楷体_GB2312": "STKaiti",
+    "宋体": "STSong",
+    "方正小标宋简体": "STSong",
+    "方正仿宋_GBK": "STFangsong"
   }
 }

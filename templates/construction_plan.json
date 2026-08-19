@@ -15,16 +15,56 @@
     }
   },
   "cover_page_rules": {
-    "allowed_elements": ["project_name", "plan_name", "organization", "date", "version", "signature_block"],
-    "disallowed_elements": ["navigation_labels", "data_tables", "text_boxes", "decorative_lines", "logos", "page_number"],
+    "allowed_elements": [
+      "project_name",
+      "plan_name",
+      "organization",
+      "date",
+      "version",
+      "signature_block"
+    ],
+    "disallowed_elements": [
+      "navigation_labels",
+      "data_tables",
+      "text_boxes",
+      "decorative_lines",
+      "logos",
+      "page_number"
+    ],
     "layout": {
       "elements": [
-        {"name": "plan_name", "position": "top_third", "alignment": "center", "font": "宋体", "size_pt": 22},
-        {"name": "project_name", "position": "below_plan_name", "alignment": "center"},
-        {"name": "organization", "position": "middle", "alignment": "center"},
-        {"name": "version", "position": "below_organization", "alignment": "center"},
-        {"name": "signature_block", "position": "bottom", "alignment": "left"},
-        {"name": "date", "position": "bottom", "alignment": "center"}
+        {
+          "name": "plan_name",
+          "position": "top_third",
+          "alignment": "center",
+          "font": "宋体",
+          "size_pt": 22
+        },
+        {
+          "name": "project_name",
+          "position": "below_plan_name",
+          "alignment": "center"
+        },
+        {
+          "name": "organization",
+          "position": "middle",
+          "alignment": "center"
+        },
+        {
+          "name": "version",
+          "position": "below_organization",
+          "alignment": "center"
+        },
+        {
+          "name": "signature_block",
+          "position": "bottom",
+          "alignment": "left"
+        },
+        {
+          "name": "date",
+          "position": "bottom",
+          "alignment": "center"
+        }
       ],
       "vertical_distribution": "balanced",
       "min_empty_lines_between_title_and_signature": 8,
@@ -49,7 +89,10 @@
       "level": 1,
       "name": "一级标题",
       "prefix_pattern": "^第[一二三四五六七八九十]+章",
-      "prefix_patterns": ["^第[一二三四五六七八九十]+章", "^[一二三四五六七八九十]+、"],
+      "prefix_patterns": [
+        "^第[一二三四五六七八九十]+章",
+        "^[一二三四五六七八九十]+、"
+      ],
       "font_cn": "宋体",
       "font_en": "Times New Roman",
       "font_size_pt": 14,
@@ -65,7 +108,10 @@
       "level": 2,
       "name": "二级标题",
       "prefix_pattern": "^\\d+\\.\\d+",
-      "prefix_patterns": ["^\\d+\\.\\d+", "^第[一二三四五六七八九十]+节"],
+      "prefix_patterns": [
+        "^\\d+\\.\\d+",
+        "^第[一二三四五六七八九十]+节"
+      ],
       "font_cn": "宋体",
       "font_en": "Times New Roman",
       "font_size_pt": 14,
@@ -81,7 +127,10 @@
       "level": 3,
       "name": "三级标题",
       "prefix_pattern": "^\\d+\\.\\d+\\.\\d+",
-      "prefix_patterns": ["^\\d+\\.\\d+\\.\\d+", "^\\d+\\.\\d+"],
+      "prefix_patterns": [
+        "^\\d+\\.\\d+\\.\\d+",
+        "^\\d+\\.\\d+"
+      ],
       "font_cn": "宋体",
       "font_en": "Times New Roman",
       "font_size_pt": 14,
@@ -95,7 +144,10 @@
     {
       "level": 1,
       "prefix_pattern": "^第[一二三四五六七八九十]+章",
-      "prefix_patterns": ["^第[一二三四五六七八九十]+章", "^[一二三四五六七八九十]+、"],
+      "prefix_patterns": [
+        "^第[一二三四五六七八九十]+章",
+        "^[一二三四五六七八九十]+、"
+      ],
       "font": "宋体",
       "font_size_pt": 14,
       "bold": true
@@ -103,7 +155,10 @@
     {
       "level": 2,
       "prefix_pattern": "^\\d+\\.\\d+",
-      "prefix_patterns": ["^\\d+\\.\\d+", "^第[一二三四五六七八九十]+节"],
+      "prefix_patterns": [
+        "^\\d+\\.\\d+",
+        "^第[一二三四五六七八九十]+节"
+      ],
       "font": "宋体",
       "font_size_pt": 14,
       "bold": true
@@ -149,5 +204,16 @@
   "printing": {
     "double_sided": false,
     "binding_side": "left"
+  },
+  "font_fallback": {
+    "小标宋体": "STSong",
+    "仿宋_GB2312": "STFangsong",
+    "仿宋": "STFangsong",
+    "黑体": "STHeiti",
+    "楷体": "STKaiti",
+    "楷体_GB2312": "STKaiti",
+    "宋体": "STSong",
+    "方正小标宋简体": "STSong",
+    "方正仿宋_GBK": "STFangsong"
   }
 }

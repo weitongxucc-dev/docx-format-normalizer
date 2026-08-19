@@ -15,15 +15,47 @@
     }
   },
   "cover_page_rules": {
-    "allowed_elements": ["title", "author", "institution", "abstract", "keywords"],
-    "disallowed_elements": ["navigation_labels", "data_tables", "text_boxes", "decorative_lines", "page_number"],
+    "allowed_elements": [
+      "title",
+      "author",
+      "institution",
+      "abstract",
+      "keywords"
+    ],
+    "disallowed_elements": [
+      "navigation_labels",
+      "data_tables",
+      "text_boxes",
+      "decorative_lines",
+      "page_number"
+    ],
     "layout": {
       "elements": [
-        {"name": "title", "position": "top", "alignment": "left"},
-        {"name": "author", "position": "below_title", "alignment": "left"},
-        {"name": "institution", "position": "below_author", "alignment": "left"},
-        {"name": "abstract", "position": "middle", "alignment": "left"},
-        {"name": "keywords", "position": "below_abstract", "alignment": "left"}
+        {
+          "name": "title",
+          "position": "top",
+          "alignment": "left"
+        },
+        {
+          "name": "author",
+          "position": "below_title",
+          "alignment": "left"
+        },
+        {
+          "name": "institution",
+          "position": "below_author",
+          "alignment": "left"
+        },
+        {
+          "name": "abstract",
+          "position": "middle",
+          "alignment": "left"
+        },
+        {
+          "name": "keywords",
+          "position": "below_abstract",
+          "alignment": "left"
+        }
       ],
       "vertical_distribution": "compact",
       "notes": "学术论文首页元素紧凑排列，不设独立封面页"
@@ -150,5 +182,16 @@
   "force_clear": [],
   "printing": {
     "double_sided": false
+  },
+  "font_fallback": {
+    "小标宋体": "STSong",
+    "仿宋_GB2312": "STFangsong",
+    "仿宋": "STFangsong",
+    "黑体": "STHeiti",
+    "楷体": "STKaiti",
+    "楷体_GB2312": "STKaiti",
+    "宋体": "STSong",
+    "方正小标宋简体": "STSong",
+    "方正仿宋_GBK": "STFangsong"
   }
 }

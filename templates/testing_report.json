@@ -19,7 +19,12 @@
     {
       "zone_id": "cover",
       "zone_name": "封面页",
-      "detection_keywords": ["检验报告", "检测报告", "CMA", "CNAS"],
+      "detection_keywords": [
+        "检验报告",
+        "检测报告",
+        "CMA",
+        "CNAS"
+      ],
       "detection_position": "first_page",
       "elements": [
         {
@@ -61,7 +66,11 @@
     {
       "zone_id": "notice",
       "zone_name": "说明页",
-      "detection_keywords": ["注意事项", "声明", "说明"],
+      "detection_keywords": [
+        "注意事项",
+        "声明",
+        "说明"
+      ],
       "elements": [
         {
           "position": "line_1",
@@ -84,7 +93,11 @@
     {
       "zone_id": "home",
       "zone_name": "首页",
-      "detection_keywords": ["批准", "审核", "主检"],
+      "detection_keywords": [
+        "批准",
+        "审核",
+        "主检"
+      ],
       "elements": [
         {
           "position": "lines_1_2",
@@ -123,7 +136,11 @@
     {
       "zone_id": "data",
       "zone_name": "数据页",
-      "detection_keywords": ["检测数据", "检测结果", "检验数据"],
+      "detection_keywords": [
+        "检测数据",
+        "检测结果",
+        "检验数据"
+      ],
       "elements": [
         {
           "position": "lines_1_2",
@@ -154,7 +171,11 @@
     {
       "zone_id": "attachment",
       "zone_name": "附件页",
-      "detection_keywords": ["附件", "附录", "附图"],
+      "detection_keywords": [
+        "附件",
+        "附录",
+        "附图"
+      ],
       "elements": [
         {
           "position": "lines_1_2",
@@ -184,16 +205,55 @@
     }
   ],
   "cover_page_rules": {
-    "allowed_elements": ["report_title", "report_number", "date", "organization", "sample_name", "logos_cma_cnas"],
-    "disallowed_elements": ["navigation_labels", "data_tables", "text_boxes", "decorative_lines", "advertising"],
+    "allowed_elements": [
+      "report_title",
+      "report_number",
+      "date",
+      "organization",
+      "sample_name",
+      "logos_cma_cnas"
+    ],
+    "disallowed_elements": [
+      "navigation_labels",
+      "data_tables",
+      "text_boxes",
+      "decorative_lines",
+      "advertising"
+    ],
     "layout": {
       "elements": [
-        {"name": "report_title", "position": "top_third", "alignment": "center", "font": "黑体", "size_pt": 36},
-        {"name": "report_number", "position": "below_title", "alignment": "center"},
-        {"name": "logos_cma_cnas", "position": "upper_right", "alignment": "right"},
-        {"name": "sample_name", "position": "middle", "alignment": "center"},
-        {"name": "organization", "position": "bottom_third", "alignment": "center"},
-        {"name": "date", "position": "bottom", "alignment": "center"}
+        {
+          "name": "report_title",
+          "position": "top_third",
+          "alignment": "center",
+          "font": "黑体",
+          "size_pt": 36
+        },
+        {
+          "name": "report_number",
+          "position": "below_title",
+          "alignment": "center"
+        },
+        {
+          "name": "logos_cma_cnas",
+          "position": "upper_right",
+          "alignment": "right"
+        },
+        {
+          "name": "sample_name",
+          "position": "middle",
+          "alignment": "center"
+        },
+        {
+          "name": "organization",
+          "position": "bottom_third",
+          "alignment": "center"
+        },
+        {
+          "name": "date",
+          "position": "bottom",
+          "alignment": "center"
+        }
       ],
       "vertical_distribution": "balanced",
       "min_empty_lines_between_title_and_info": 4,
@@ -227,5 +287,16 @@
     "require_cnas_seal": true,
     "require_cross_seal": true,
     "authorized_signer": true
+  },
+  "font_fallback": {
+    "小标宋体": "STSong",
+    "仿宋_GB2312": "STFangsong",
+    "仿宋": "STFangsong",
+    "黑体": "STHeiti",
+    "楷体": "STKaiti",
+    "楷体_GB2312": "STKaiti",
+    "宋体": "STSong",
+    "方正小标宋简体": "STSong",
+    "方正仿宋_GBK": "STFangsong"
   }
 }
