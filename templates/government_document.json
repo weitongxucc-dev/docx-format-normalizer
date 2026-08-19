@@ -31,6 +31,21 @@
     "alignment": "justify",
     "text_color": "000000"
   },
+  "cover_page_rules": {
+    "allowed_elements": ["title", "subtitle", "date", "organization"],
+    "disallowed_elements": ["navigation_labels", "data_tables", "page_number", "text_boxes", "decorative_lines"],
+    "layout": {
+      "elements": [
+        {"name": "title", "position": "top_third", "alignment": "center", "font": "小标宋体", "size_pt": 22},
+        {"name": "organization", "position": "bottom_third", "alignment": "center"},
+        {"name": "date", "position": "bottom", "alignment": "center"}
+      ],
+      "vertical_distribution": "balanced",
+      "min_empty_lines_between_title_and_date": 6,
+      "notes": "标题居页面上1/3，日期居页面下1/3，中间留白"
+    },
+    "notes": "公文首页仅保留标题、发文机关和日期，删除导航标签和参数表格。标题在上方1/3处，日期在下方，中间留白。"
+  },
   "title_heading": {
     "font_cn": "小标宋体",
     "font_en": "Times New Roman",

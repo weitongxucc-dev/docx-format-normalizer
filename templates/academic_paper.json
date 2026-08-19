@@ -14,6 +14,22 @@
       "right_mm": 25
     }
   },
+  "cover_page_rules": {
+    "allowed_elements": ["title", "author", "institution", "abstract", "keywords"],
+    "disallowed_elements": ["navigation_labels", "data_tables", "text_boxes", "decorative_lines", "page_number"],
+    "layout": {
+      "elements": [
+        {"name": "title", "position": "top", "alignment": "left"},
+        {"name": "author", "position": "below_title", "alignment": "left"},
+        {"name": "institution", "position": "below_author", "alignment": "left"},
+        {"name": "abstract", "position": "middle", "alignment": "left"},
+        {"name": "keywords", "position": "below_abstract", "alignment": "left"}
+      ],
+      "vertical_distribution": "compact",
+      "notes": "学术论文首页元素紧凑排列，不设独立封面页"
+    },
+    "notes": "学术论文首页仅保留标题、作者、机构、摘要和关键词，左对齐紧凑排列"
+  },
   "body_text": {
     "font_cn": "宋体",
     "font_en": "Times New Roman",

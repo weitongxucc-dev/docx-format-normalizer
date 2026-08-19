@@ -39,6 +39,7 @@ class FormatValidator:
         self._check_tables()
         self._check_force_clear()
         self._check_content_compliance()
+        self._check_cover_page()
         self._report()
 
     def _check(self, name, condition, detail_ok, detail_fail):
@@ -279,7 +280,6 @@ class FormatValidator:
                             "Footer text still present")
 
     def _check_content_compliance(self):
-        """Check for non-compliant content that should have been cleaned up."""
         black = RGBColor(0, 0, 0)
 
         colored_text = 0
@@ -332,6 +332,101 @@ class FormatValidator:
                     para_borders == 0,
                     f"0 paragraph borders (clean)",
                     f"{para_borders} paragraph borders remain")
+
+    def _check_cover_page(self):
+        """Check cover page compliance with industry standard layout rules."""
+        cover_rules = self.template.get("cover_page_rules", {})
+        if not cover_rules:
+            return
+
+        disallowed = cover_rules.get("disallowed_elements", [])
+
+        first_heading_idx = None
+        for i, para in enumerate(self.doc.paragraphs):
+            style_name = (para.style.name or "").lower() if para.style else ""
+            if "heading" in style_name or "title" in style_name:
+                first_heading_idx = i
+                break
+
+        if first_heading_idx is None:
+            self._warn("Cover Page", "No heading found - cannot identify cover region")
+            return
+
+        cover_paras = []
+        for i, para in enumerate(self.doc.paragraphs):
+            if i >= first_heading_idx:
+                break
+            if para.text.strip():
+                cover_paras.append((i, para))
+
+        # Check navigation labels
+        if "navigation_labels" in disallowed:
+            nav_found = False
+            for idx, para in cover_paras:
+                text = para.text.strip()
+                dot_chars = ['\u00b7', '\u2022', '\u2502', '\u2503', '\u2016']
+                for dc in dot_chars:
+                    if text.count(dc) >= 2:
+                        nav_found = True
+                        break
+            self._check("Cover: No Navigation Labels",
+                        not nav_found,
+                        "No navigation labels found (clean)",
+                        "Navigation labels still present on cover page")
+
+        # Check data tables
+        if "data_tables" in disallowed:
+            first_heading_p = self.doc.paragraphs[first_heading_idx]._p
+            body = self.doc.element.body
+            body_children = list(body)
+            try:
+                heading_order = body_children.index(first_heading_p)
+            except ValueError:
+                heading_order = len(body_children)
+
+            cover_tables = 0
+            for table in self.doc.tables:
+                tbl = table._element
+                try:
+                    if body_children.index(tbl) < heading_order:
+                        cover_tables += 1
+                except ValueError:
+                    pass
+
+            self._check("Cover: No Data Tables",
+                        cover_tables == 0,
+                        "No data tables on cover (clean)",
+                        f"{cover_tables} data table(s) still on cover page")
+
+        # Check date position
+        layout = cover_rules.get("layout", {})
+        if layout and cover_paras:
+            date_idx = None
+            for idx, (para_idx, para) in enumerate(cover_paras):
+                text = para.text.strip()
+                if any(kw in text for kw in ['年', '月', '日']) and len(text) <= 20:
+                    date_idx = idx
+                    break
+
+            if date_idx is not None and len(cover_paras) > 2:
+                is_at_bottom = date_idx >= len(cover_paras) * 2 // 3
+                self._check("Cover: Date at Bottom",
+                            is_at_bottom,
+                            f"Date at position {date_idx+1}/{len(cover_paras)} (bottom)",
+                            f"Date at position {date_idx+1}/{len(cover_paras)} (not at bottom)")
+
+            # Check spacing
+            min_spacing = layout.get("min_empty_lines_between_title_and_date", 0)
+            if min_spacing > 0 and date_idx is not None and len(cover_paras) >= 2:
+                title_idx = cover_paras[0][0]
+                date_para_idx = cover_paras[date_idx][0]
+                empty_count = sum(1 for i in range(title_idx + 1, date_para_idx)
+                                   if i < len(self.doc.paragraphs) and
+                                   not self.doc.paragraphs[i].text.strip())
+                self._check("Cover: Title-Date Spacing",
+                            empty_count >= min_spacing,
+                            f"{empty_count} empty lines between title and date (>= {min_spacing})",
+                            f"Only {empty_count} empty lines (need {min_spacing})")
 
     def _report(self):
         print(f"\n{'='*60}")

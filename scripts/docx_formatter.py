@@ -204,6 +204,7 @@ class DocxFormatter:
         colored_cells = self._audit_colored_cells()
         nonstandard_sizes = self._audit_font_sizes()
         para_borders = self._audit_paragraph_borders()
+        cover_issues = self._audit_cover_page()
 
         if colored_text:
             audit_issues.append({
@@ -232,6 +233,15 @@ class DocxFormatter:
             })
             self._cleanup_paragraph_borders()
 
+        if cover_issues:
+            audit_issues.append({
+                "issue": "cover_page_nonstandard",
+                "count": len(cover_issues),
+                "detail": "封面存在非标准元素: " + "; ".join(cover_issues),
+                "action": "已清理导航标签和装饰表格"
+            })
+            self._cleanup_cover_page()
+
         if nonstandard_sizes:
             audit_issues.append({
                 "issue": "nonstandard_font_size",
@@ -245,10 +255,276 @@ class DocxFormatter:
             if colored_text: parts.append(f"彩色文字{colored_text}")
             if colored_cells: parts.append(f"彩色背景{colored_cells}")
             if para_borders: parts.append(f"段落装饰线{para_borders}")
+            if cover_issues: parts.append(f"封面非标准{len(cover_issues)}项")
             if nonstandard_sizes: parts.append(f"非标准字号{nonstandard_sizes}")
             self._record("文档审查", f"发现{len(audit_issues)}类问题",
                          "/".join(parts),
                          "已自动清理，详见报告")
+
+    def _audit_cover_page(self):
+        """Audit cover page for non-standard elements and layout compliance."""
+        issues = []
+        cover_rules = self.template.get("cover_page_rules", {})
+        if not cover_rules:
+            return issues
+
+        disallowed = cover_rules.get("disallowed_elements", [])
+
+        cover_paras = []
+        for i, para in enumerate(self.doc.paragraphs):
+            role = self._para_roles[i] if i < len(self._para_roles) else "body"
+            if role == "cover" and para.text.strip():
+                cover_paras.append((i, para))
+
+        # 1. Navigation labels
+        if "navigation_labels" in disallowed:
+            for idx, para in cover_paras:
+                text = para.text.strip()
+                dot_chars = ['·', '•', '│', '丨', '┃', '╎', '┆']
+                for dc in dot_chars:
+                    if text.count(dc) >= 2:
+                        issues.append(f"导航标签: {text[:40]}")
+                        break
+                else:
+                    if '|' in text and text.count('|') >= 2:
+                        issues.append(f"导航标签: {text[:40]}")
+
+        # 2. Data tables on cover (tables before first heading)
+        if "data_tables" in disallowed:
+            first_heading_idx = None
+            for i, para in enumerate(self.doc.paragraphs):
+                if self._is_heading_paragraph(para):
+                    first_heading_idx = i
+                    break
+
+            if first_heading_idx is not None:
+                first_heading_p = self.doc.paragraphs[first_heading_idx]._p
+                body = self.doc.element.body
+                body_children = list(body)
+                try:
+                    heading_order = body_children.index(first_heading_p)
+                except ValueError:
+                    heading_order = len(body_children)
+
+                cover_table_count = 0
+                for table in self.doc.tables:
+                    tbl = table._element
+                    try:
+                        tbl_order = body_children.index(tbl)
+                        if tbl_order < heading_order:
+                            cover_table_count += 1
+                    except ValueError:
+                        pass
+
+                if cover_table_count > 0:
+                    issues.append(f"封面上有{cover_table_count}个数据表格")
+
+        # 3. Text boxes / shapes on cover
+        if "text_boxes" in disallowed:
+            first_heading_idx = None
+            for i, para in enumerate(self.doc.paragraphs):
+                if self._is_heading_paragraph(para):
+                    first_heading_idx = i
+                    break
+
+            if first_heading_idx is not None:
+                first_heading_p = self.doc.paragraphs[first_heading_idx]._p
+                body = self.doc.element.body
+                body_children = list(body)
+                try:
+                    heading_order = body_children.index(first_heading_p)
+                except ValueError:
+                    heading_order = len(body_children)
+
+                textbox_count = 0
+                for child in body_children[:heading_order]:
+                    drawings = child.findall('.//' + qn('w:drawing'))
+                    picts = child.findall('.//' + qn('w:pict'))
+                    textbox_count += len(drawings) + len(picts)
+
+                if textbox_count > 0:
+                    issues.append(f"封面上有{textbox_count}个文本框/图形")
+
+        # 4. Layout validation
+        layout = cover_rules.get("layout", {})
+        if layout and cover_paras:
+            layout_issues = self._validate_cover_layout(cover_paras, layout)
+            issues.extend(layout_issues)
+
+        return issues
+
+    def _validate_cover_layout(self, cover_paras, layout):
+        """Validate cover page element positions against standard layout."""
+        issues = []
+        total = len(cover_paras)
+        if total == 0:
+            return issues
+
+        # Check date position - should be at bottom
+        date_keywords = ['年', '月', '日']
+        date_idx = None
+        for idx, (para_idx, para) in enumerate(cover_paras):
+            text = para.text.strip()
+            if any(kw in text for kw in date_keywords):
+                if len(text) <= 20:
+                    date_idx = idx
+                    break
+
+        if date_idx is not None and total > 2:
+            if date_idx < total * 2 // 3:
+                issues.append(
+                    f"日期位置不在底部（当前第{date_idx+1}/{total}段，应在底部）")
+
+        # Check spacing between title and date
+        min_spacing = layout.get("min_empty_lines_between_title_and_date", 0)
+        if min_spacing > 0 and date_idx is not None and total >= 2:
+            title_para_idx = cover_paras[0][0]
+            date_para_idx = cover_paras[date_idx][0]
+            empty_count = 0
+            for i in range(title_para_idx + 1, date_para_idx):
+                if i < len(self._para_roles):
+                    if self._para_roles[i] == "empty":
+                        empty_count += 1
+            if empty_count < min_spacing:
+                issues.append(
+                    f"标题与日期间留白不足（当前{empty_count}行，需{min_spacing}行）")
+
+        return issues
+
+    def _cleanup_cover_page(self):
+        """Remove non-standard cover page elements and restructure layout."""
+        cover_rules = self.template.get("cover_page_rules", {})
+        if not cover_rules:
+            return
+
+        disallowed = cover_rules.get("disallowed_elements", [])
+
+        # 1. Remove navigation labels
+        if "navigation_labels" in disallowed:
+            paras_to_remove = []
+            for i, para in enumerate(self.doc.paragraphs):
+                role = self._para_roles[i] if i < len(self._para_roles) else "body"
+                if role != "cover":
+                    continue
+                text = para.text.strip()
+                should_remove = False
+                dot_chars = ['·', '•', '│', '丨', '┃', '╎', '┆']
+                for dc in dot_chars:
+                    if text.count(dc) >= 2:
+                        should_remove = True
+                        break
+                if not should_remove and '|' in text and text.count('|') >= 2:
+                    should_remove = True
+
+                if should_remove:
+                    paras_to_remove.append((para, text))
+
+            for para, text in paras_to_remove:
+                p_element = para._element
+                p_element.getparent().remove(p_element)
+                self._record("文档审查", "封面清理",
+                             f"删除导航标签: {text[:30]}", "已删除")
+
+        # 2. Remove data tables from cover
+        if "data_tables" in disallowed:
+            first_heading_idx = None
+            for i, para in enumerate(self.doc.paragraphs):
+                if self._is_heading_paragraph(para):
+                    first_heading_idx = i
+                    break
+
+            if first_heading_idx is not None:
+                first_heading_p = self.doc.paragraphs[first_heading_idx]._p
+                body = self.doc.element.body
+                body_children = list(body)
+                try:
+                    heading_order = body_children.index(first_heading_p)
+                except ValueError:
+                    heading_order = len(body_children)
+
+                tables_to_remove = []
+                for table in self.doc.tables:
+                    tbl = table._element
+                    try:
+                        tbl_order = body_children.index(tbl)
+                        if tbl_order < heading_order:
+                            tables_to_remove.append(tbl)
+                    except ValueError:
+                        pass
+
+                for tbl in tables_to_remove:
+                    tbl.getparent().remove(tbl)
+                    self._record("文档审查", "封面清理",
+                                 "删除封面数据表格", "已删除")
+
+        # 3. Remove text boxes / shapes from cover
+        if "text_boxes" in disallowed:
+            first_heading_idx = None
+            for i, para in enumerate(self.doc.paragraphs):
+                if self._is_heading_paragraph(para):
+                    first_heading_idx = i
+                    break
+
+            if first_heading_idx is not None:
+                first_heading_p = self.doc.paragraphs[first_heading_idx]._p
+                body = self.doc.element.body
+                body_children = list(body)
+                try:
+                    heading_order = body_children.index(first_heading_p)
+                except ValueError:
+                    heading_order = len(body_children)
+
+                textbox_removed = 0
+                for child in body_children[:heading_order]:
+                    drawings = child.findall('.//' + qn('w:drawing'))
+                    picts = child.findall('.//' + qn('w:pict'))
+                    for elem in drawings + picts:
+                        elem.getparent().remove(elem)
+                        textbox_removed += 1
+
+                if textbox_removed > 0:
+                    self._record("文档审查", "封面清理",
+                                 f"删除{textbox_removed}个文本框/图形", "已删除")
+
+        # 4. Restructure cover layout (add spacing if needed)
+        layout = cover_rules.get("layout", {})
+        if layout:
+            self._restructure_cover_layout(layout)
+
+    def _restructure_cover_layout(self, layout):
+        """Ensure proper spacing between cover elements."""
+        cover_paras = []
+        for i, para in enumerate(self.doc.paragraphs):
+            role = self._para_roles[i] if i < len(self._para_roles) else "body"
+            if role == "cover" and para.text.strip():
+                cover_paras.append((i, para))
+
+        if len(cover_paras) < 2:
+            return
+
+        min_spacing = layout.get("min_empty_lines_between_title_and_date", 0)
+        if min_spacing <= 0:
+            return
+
+        title_idx = cover_paras[0][0]
+        last_idx = cover_paras[-1][0]
+        empty_count = 0
+        for i in range(title_idx + 1, last_idx):
+            if i < len(self._para_roles):
+                if self._para_roles[i] == "empty":
+                    empty_count += 1
+
+        if empty_count >= min_spacing:
+            return
+
+        needed = min_spacing - empty_count
+        last_para = cover_paras[-1][1]
+        for _ in range(needed):
+            new_p = OxmlElement('w:p')
+            last_para._element.addprevious(new_p)
+        self._record("文档审查", "封面布局调整",
+                     f"标题与日期间补充{needed}个空行",
+                     f"已补充至{min_spacing}行留白")
 
     def _audit_paragraph_borders(self):
         """Count paragraphs with decorative borders (lines below headings etc.)."""

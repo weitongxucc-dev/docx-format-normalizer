@@ -18,6 +18,23 @@
     "left_greater_than_right": true,
     "top_greater_than_bottom": true
   },
+  "cover_page_rules": {
+    "allowed_elements": ["court_name", "document_title", "case_number", "parties", "date"],
+    "disallowed_elements": ["navigation_labels", "data_tables", "text_boxes", "decorative_lines", "logos", "page_number"],
+    "layout": {
+      "elements": [
+        {"name": "court_name", "position": "line_2", "alignment": "center", "font": "宋体", "size_pt": 22},
+        {"name": "document_title", "position": "line_4", "alignment": "center"},
+        {"name": "case_number", "position": "line_6", "alignment": "right"},
+        {"name": "parties", "position": "body_start", "alignment": "left"},
+        {"name": "date", "position": "bottom", "alignment": "right"}
+      ],
+      "vertical_distribution": "compact",
+      "date_format": "chinese_uppercase",
+      "notes": "法院名称居中第2行，文书名称居中，案号右对齐，日期用中文大写在结尾处"
+    },
+    "notes": "法院文书首页仅保留法院名称、文书名称、案号和当事人信息，日期用中文大写"
+  },
   "body_text": {
     "font_cn": "仿宋_GB2312",
     "font_en": "Times New Roman",

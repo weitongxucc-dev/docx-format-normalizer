@@ -14,6 +14,24 @@
       "right_mm": 25
     }
   },
+  "cover_page_rules": {
+    "allowed_elements": ["project_name", "plan_name", "organization", "date", "version", "signature_block"],
+    "disallowed_elements": ["navigation_labels", "data_tables", "text_boxes", "decorative_lines", "logos", "page_number"],
+    "layout": {
+      "elements": [
+        {"name": "plan_name", "position": "top_third", "alignment": "center", "font": "宋体", "size_pt": 22},
+        {"name": "project_name", "position": "below_plan_name", "alignment": "center"},
+        {"name": "organization", "position": "middle", "alignment": "center"},
+        {"name": "version", "position": "below_organization", "alignment": "center"},
+        {"name": "signature_block", "position": "bottom", "alignment": "left"},
+        {"name": "date", "position": "bottom", "alignment": "center"}
+      ],
+      "vertical_distribution": "balanced",
+      "min_empty_lines_between_title_and_signature": 8,
+      "notes": "方案名称居页面上1/3，编制单位和日期在页面下1/3，签字栏在底部"
+    },
+    "notes": "施工方案封面仅保留工程名称、方案名称、编制单位、日期和版本号，底部签字栏除外"
+  },
   "body_text": {
     "font_cn": "宋体",
     "font_en": "Times New Roman",

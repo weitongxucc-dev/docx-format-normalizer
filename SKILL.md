@@ -22,6 +22,10 @@ The Skill does NOT blindly accept and format whatever the user uploads. It first
 - Theme accent colors → set to black
 - Table border colors → set to black
 - Style-level shading → cleared
+- Cover page navigation labels (dot-separated taglines) → removed
+- Cover page data tables → removed
+- Cover page text boxes/shapes → removed
+- Cover page layout non-compliance → restructured (title at top, date at bottom, proper spacing)
 
 **Output filename rule**: Output files MUST use Chinese names matching the industry, e.g. `01_党政机关公文.docx`, NOT English names like `government_document_output.docx`.
 

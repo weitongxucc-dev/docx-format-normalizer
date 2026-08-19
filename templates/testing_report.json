@@ -183,6 +183,24 @@
       ]
     }
   ],
+  "cover_page_rules": {
+    "allowed_elements": ["report_title", "report_number", "date", "organization", "sample_name", "logos_cma_cnas"],
+    "disallowed_elements": ["navigation_labels", "data_tables", "text_boxes", "decorative_lines", "advertising"],
+    "layout": {
+      "elements": [
+        {"name": "report_title", "position": "top_third", "alignment": "center", "font": "黑体", "size_pt": 36},
+        {"name": "report_number", "position": "below_title", "alignment": "center"},
+        {"name": "logos_cma_cnas", "position": "upper_right", "alignment": "right"},
+        {"name": "sample_name", "position": "middle", "alignment": "center"},
+        {"name": "organization", "position": "bottom_third", "alignment": "center"},
+        {"name": "date", "position": "bottom", "alignment": "center"}
+      ],
+      "vertical_distribution": "balanced",
+      "min_empty_lines_between_title_and_info": 4,
+      "notes": "报告标题居页面上1/3，机构和日期在页面下1/3，CMA/CNAS标志在右上角"
+    },
+    "notes": "检测报告封面仅保留报告名称、编号、日期、机构和样品信息，CMA/CNAS标志除外"
+  },
   "default_body_text": {
     "font_cn": "仿宋",
     "font_en": "Times New Roman",
