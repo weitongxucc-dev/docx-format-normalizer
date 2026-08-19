@@ -1,0 +1,213 @@
+{
+  "industry_id": "testing_report",
+  "industry_name": "CMA/CNAS检测报告",
+  "standard": "DB61/T 1327.5-2020 + CMA/CNAS通用规范",
+  "page_setup": {
+    "paper_size": "A4",
+    "paper_width_mm": 210,
+    "paper_height_mm": 297,
+    "orientation": "portrait",
+    "margins": {
+      "top_mm": 25,
+      "bottom_mm": 25,
+      "left_mm": 25,
+      "right_mm": 25
+    },
+    "binding_side": "left"
+  },
+  "page_zones": [
+    {
+      "zone_id": "cover",
+      "zone_name": "封面页",
+      "detection_keywords": ["检验报告", "检测报告", "CMA", "CNAS"],
+      "detection_position": "first_page",
+      "elements": [
+        {
+          "position": "line_2",
+          "content_hint": "检验报告/检测报告",
+          "font": "黑体",
+          "font_size_pt": 60,
+          "bold": true,
+          "alignment": "center"
+        },
+        {
+          "position": "line_3",
+          "content_hint": "报告编号",
+          "font": "仿宋",
+          "font_size_pt": 16,
+          "font_size_name": "三号",
+          "bold": false,
+          "alignment": "center"
+        },
+        {
+          "position": "lower_section",
+          "content_hint": "产品名称、受检单位、生产单位、委托单位、检验类别",
+          "font": "仿宋",
+          "font_size_pt": 15,
+          "font_size_name": "小三号",
+          "bold": false
+        },
+        {
+          "position": "last_line",
+          "content_hint": "实验室名称",
+          "font": "黑体",
+          "font_size_pt": 26,
+          "font_size_name": "一号",
+          "bold": true,
+          "alignment": "center"
+        }
+      ]
+    },
+    {
+      "zone_id": "notice",
+      "zone_name": "说明页",
+      "detection_keywords": ["注意事项", "声明", "说明"],
+      "elements": [
+        {
+          "position": "line_1",
+          "content_hint": "注意事项",
+          "font": "黑体",
+          "font_size_pt": 18,
+          "font_size_name": "小二号",
+          "bold": true
+        },
+        {
+          "position": "line_2_plus",
+          "content_hint": "具体事项内容",
+          "font": "黑体",
+          "font_size_pt": 15,
+          "font_size_name": "小三号",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "zone_id": "home",
+      "zone_name": "首页",
+      "detection_keywords": ["批准", "审核", "主检"],
+      "elements": [
+        {
+          "position": "lines_1_2",
+          "content_hint": "实验室名称、检验报告",
+          "font": "黑体",
+          "font_size_pt": 18,
+          "font_size_name": "小二号",
+          "bold": true
+        },
+        {
+          "position": "line_3",
+          "content_hint": "编号、页次",
+          "font": "仿宋",
+          "font_size_pt": 12,
+          "font_size_name": "小四号",
+          "bold": false
+        },
+        {
+          "position": "middle",
+          "content_hint": "正文内容",
+          "font": "仿宋",
+          "font_size_pt": 12,
+          "font_size_name": "小四号",
+          "bold": false
+        },
+        {
+          "position": "last_line",
+          "content_hint": "批准、审核、主检(编制)",
+          "font": "仿宋",
+          "font_size_pt": 12,
+          "font_size_name": "小四号",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "zone_id": "data",
+      "zone_name": "数据页",
+      "detection_keywords": ["检测数据", "检测结果", "检验数据"],
+      "elements": [
+        {
+          "position": "lines_1_2",
+          "content_hint": "实验室名称、检验报告",
+          "font": "黑体",
+          "font_size_pt": 18,
+          "font_size_name": "小二号",
+          "bold": true
+        },
+        {
+          "position": "line_3",
+          "content_hint": "编号、页次",
+          "font": "仿宋",
+          "font_size_pt": 12,
+          "font_size_name": "小四号",
+          "bold": false
+        },
+        {
+          "position": "middle",
+          "content_hint": "数据内容",
+          "font": "仿宋",
+          "font_size_pt": 12,
+          "font_size_name": "小四号",
+          "bold": false
+        }
+      ]
+    },
+    {
+      "zone_id": "attachment",
+      "zone_name": "附件页",
+      "detection_keywords": ["附件", "附录", "附图"],
+      "elements": [
+        {
+          "position": "lines_1_2",
+          "content_hint": "实验室名称、检验报告",
+          "font": "黑体",
+          "font_size_pt": 18,
+          "font_size_name": "小二号",
+          "bold": true
+        },
+        {
+          "position": "line_3",
+          "content_hint": "编号、页次",
+          "font": "仿宋",
+          "font_size_pt": 12,
+          "font_size_name": "小四号",
+          "bold": false
+        },
+        {
+          "position": "middle",
+          "content_hint": "附件内容",
+          "font": "仿宋",
+          "font_size_pt": 12,
+          "font_size_name": "小四号",
+          "bold": true
+        }
+      ]
+    }
+  ],
+  "default_body_text": {
+    "font_cn": "仿宋",
+    "font_en": "Times New Roman",
+    "font_size_pt": 12,
+    "font_size_name": "小四号",
+    "line_spacing_rule": "1.5x",
+    "text_color": "000000"
+  },
+  "header_footer": {
+    "has_page_number": true,
+    "page_number_continuous": true,
+    "cover_separate_page": true,
+    "toc_separate_page": true
+  },
+  "tables": {
+    "border_style": "single",
+    "border_width_pt": 0.5,
+    "table_alignment": "center"
+  },
+  "force_clear": [],
+  "seal_requirements": {
+    "require_official_seal": true,
+    "require_cma_seal": true,
+    "require_cnas_seal": true,
+    "require_cross_seal": true,
+    "authorized_signer": true
+  }
+}

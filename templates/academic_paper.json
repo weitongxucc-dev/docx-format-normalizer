@@ -1,0 +1,138 @@
+{
+  "industry_id": "academic_paper",
+  "industry_name": "学术论文（GB/T 7714）",
+  "standard": "GB/T 7714 参考文献著录规则",
+  "page_setup": {
+    "paper_size": "A4",
+    "paper_width_mm": 210,
+    "paper_height_mm": 297,
+    "orientation": "portrait",
+    "margins": {
+      "top_mm": 25,
+      "bottom_mm": 25,
+      "left_mm": 25,
+      "right_mm": 25
+    }
+  },
+  "body_text": {
+    "font_cn": "宋体",
+    "font_en": "Times New Roman",
+    "font_size_pt": 12,
+    "font_size_name": "小四号",
+    "line_spacing_rule": "1.5x",
+    "first_line_indent_chars": 2,
+    "alignment": "left",
+    "text_color": "000000",
+    "cjk_latin_font_separation": true
+  },
+  "headings": [
+    {
+      "level": 0,
+      "name": "中文题目",
+      "font": "黑体",
+      "font_size_pt": 12,
+      "font_size_name": "小四号",
+      "bold": false,
+      "alignment": "left"
+    },
+    {
+      "level": 1,
+      "name": "英文题目",
+      "font": "Times New Roman",
+      "font_size_pt": 12,
+      "font_size_name": "小四号",
+      "bold": false,
+      "alignment": "left"
+    }
+  ],
+  "author_info": {
+    "name_font_cn": "宋体",
+    "name_font_en": "Times New Roman",
+    "name_size_pt": 12,
+    "name_size_name": "小四号",
+    "name_bold": true,
+    "alignment": "left"
+  },
+  "abstract": {
+    "label_font": "黑体",
+    "label_size_pt": 10.5,
+    "label_size_name": "五号",
+    "content_font_cn": "宋体",
+    "content_font_en": "Times New Roman",
+    "content_size_pt": 10.5,
+    "content_size_name": "五号",
+    "alignment": "left"
+  },
+  "keywords": {
+    "label_font": "黑体",
+    "label_size_pt": 10.5,
+    "content_font_cn": "宋体",
+    "content_font_en": "Times New Roman",
+    "content_size_pt": 10.5,
+    "alignment": "left"
+  },
+  "section_headings": [
+    {
+      "level": 1,
+      "prefix_pattern": "^\\d+\\s",
+      "font_cn": "黑体",
+      "font_en": "Times New Roman",
+      "font_size_pt": 12,
+      "bold": false,
+      "alignment": "left"
+    },
+    {
+      "level": 2,
+      "prefix_pattern": "^\\d+\\.\\d+",
+      "font_cn": "黑体",
+      "font_en": "Times New Roman",
+      "font_size_pt": 12,
+      "bold": false,
+      "alignment": "left"
+    }
+  ],
+  "notes": {
+    "title_font": "黑体",
+    "title_size_pt": 10.5,
+    "title_size_name": "五号",
+    "title_alignment": "left",
+    "title_flush_left": true,
+    "content_font_cn": "宋体",
+    "content_font_en": "Times New Roman",
+    "content_size_pt": 9,
+    "content_size_name": "小五号"
+  },
+  "references": {
+    "title_font": "黑体",
+    "title_font_alt": "宋体",
+    "title_bold": true,
+    "title_size_pt": 16,
+    "title_size_name": "三号",
+    "entry_font_cn": "宋体",
+    "entry_font_en": "Times New Roman",
+    "entry_size_pt": 10.5,
+    "entry_size_name": "五号",
+    "entry_bold": false,
+    "format_standard": "GB/T 7714",
+    "ordering": "appearance_order"
+  },
+  "tables": {
+    "border_style": "single",
+    "border_width_pt": 0.5,
+    "table_alignment": "center",
+    "caption_position": "above",
+    "caption_font_cn": "宋体",
+    "caption_font_en": "Times New Roman",
+    "caption_size_pt": 10.5
+  },
+  "figures": {
+    "caption_position": "below",
+    "caption_font_cn": "宋体",
+    "caption_font_en": "Times New Roman",
+    "caption_size_pt": 10.5
+  },
+  "force_clear": [],
+  "printing": {
+    "double_sided": false
+  }
+}

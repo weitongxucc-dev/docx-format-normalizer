@@ -1,0 +1,114 @@
+{
+  "industry_id": "construction_plan",
+  "industry_name": "工程施工方案",
+  "standard": "行业通行规范",
+  "page_setup": {
+    "paper_size": "A4",
+    "paper_width_mm": 210,
+    "paper_height_mm": 297,
+    "orientation": "portrait",
+    "margins": {
+      "top_mm": 25,
+      "bottom_mm": 25,
+      "left_mm": 31.7,
+      "right_mm": 25
+    }
+  },
+  "body_text": {
+    "font_cn": "宋体",
+    "font_en": "Times New Roman",
+    "font_size_pt": 14,
+    "font_size_name": "四号",
+    "line_spacing_rule": "1.5x",
+    "first_line_indent_chars": 2,
+    "alignment": "justify",
+    "text_color": "000000",
+    "space_before_lines": 0,
+    "space_after_lines": 0
+  },
+  "headings": [
+    {
+      "level": 1,
+      "name": "一级标题",
+      "prefix_pattern": "^第[一二三四五六七八九十]+章",
+      "font_cn": "宋体",
+      "font_en": "Times New Roman",
+      "font_size_pt": 14,
+      "font_size_name": "四号",
+      "bold": true,
+      "alignment": "center",
+      "space_before_lines": 1,
+      "space_after_lines": 1,
+      "line_spacing": "1.5x",
+      "outline_level": 1
+    },
+    {
+      "level": 2,
+      "name": "二级标题",
+      "prefix_pattern": "^\\d+\\.\\d+",
+      "font_cn": "宋体",
+      "font_en": "Times New Roman",
+      "font_size_pt": 14,
+      "font_size_name": "四号",
+      "bold": true,
+      "alignment": "left",
+      "space_before_lines": 1,
+      "space_after_lines": 1,
+      "line_spacing": "1.5x",
+      "outline_level": 2
+    },
+    {
+      "level": 3,
+      "name": "三级标题",
+      "prefix_pattern": "^\\d+\\.\\d+\\.\\d+",
+      "font_cn": "宋体",
+      "font_en": "Times New Roman",
+      "font_size_pt": 14,
+      "font_size_name": "四号",
+      "bold": true,
+      "alignment": "left",
+      "outline_level": 3
+    }
+  ],
+  "title_heading": {
+    "name": "文档标题",
+    "font_cn": "黑体",
+    "font_en": "Times New Roman",
+    "font_size_pt": 16,
+    "font_size_name": "三号",
+    "bold": false,
+    "alignment": "center"
+  },
+  "tables": {
+    "border_style": "single",
+    "border_width_pt": 0.5,
+    "table_alignment": "center",
+    "cell_font_size_pt": 12,
+    "cell_font_size_name": "小四号",
+    "cell_font_cn": "宋体",
+    "cell_font_en": "Times New Roman",
+    "no_punctuation_in_cells": true
+  },
+  "figures": {
+    "caption_position": "below",
+    "caption_alignment": "center",
+    "caption_font_cn": "宋体",
+    "caption_font_en": "Times New Roman",
+    "caption_font_size_pt": 12
+  },
+  "header_footer": {
+    "has_header": true,
+    "has_footer": true,
+    "has_page_number": true
+  },
+  "foreign_symbols": {
+    "scalars_variables": "italic",
+    "functions_units_codes": "upright",
+    "consistency_required": true
+  },
+  "force_clear": [],
+  "printing": {
+    "double_sided": false,
+    "binding_side": "left"
+  }
+}

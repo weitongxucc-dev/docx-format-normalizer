@@ -1,0 +1,100 @@
+{
+  "industry_id": "bidding_dark_guizhou",
+  "industry_name": "招投标暗标（贵州省）",
+  "standard": "黔发改法规〔2026〕196号",
+  "page_setup": {
+    "paper_size": "A4",
+    "paper_width_mm": 210,
+    "paper_height_mm": 297,
+    "orientation": "portrait",
+    "margins": {
+      "top_mm": 25,
+      "bottom_mm": 25,
+      "left_mm": 25,
+      "right_mm": 25
+    },
+    "gutter_mm": 0
+  },
+  "body_text": {
+    "font_cn": "宋体",
+    "font_en": "宋体",
+    "font_size_pt": 14,
+    "font_size_name": "四号",
+    "line_spacing_rule": "1.5x",
+    "first_line_indent_chars": 2,
+    "alignment": "left",
+    "text_color": "000000"
+  },
+  "headings": [
+    {
+      "level": 0,
+      "name": "标题",
+      "font": "宋体",
+      "font_size_pt": 14,
+      "font_size_name": "四号",
+      "bold": false,
+      "alignment": "center"
+    }
+  ],
+  "hierarchy_fonts": [
+    {
+      "level": 1,
+      "prefix_pattern": "^\\d+[\\.\\s]",
+      "font": "宋体",
+      "font_size_pt": 14,
+      "bold": false
+    },
+    {
+      "level": 2,
+      "prefix_pattern": "^\\d+\\.\\d+",
+      "font": "宋体",
+      "font_size_pt": 14,
+      "bold": false
+    },
+    {
+      "level": 3,
+      "prefix_pattern": "^\\d+\\.\\d+\\.\\d+",
+      "font": "宋体",
+      "font_size_pt": 14,
+      "bold": false
+    }
+  ],
+  "chart_text": {
+    "font": "宋体",
+    "font_size_pt": 10.5,
+    "font_size_name": "五号",
+    "bold": false
+  },
+  "header_footer": {
+    "has_header": false,
+    "has_footer": false,
+    "has_page_number": false
+  },
+  "tables": {
+    "border_style": "single",
+    "border_width_pt": 0.5,
+    "table_alignment": "center"
+  },
+  "images": {
+    "caption_position": "below",
+    "caption_alignment": "center",
+    "caption_font": "宋体",
+    "caption_font_size_pt": 10.5
+  },
+  "force_clear": [
+    "bold",
+    "italic",
+    "underline",
+    "strikethrough",
+    "colored_text",
+    "colored_background",
+    "headers",
+    "footers",
+    "page_numbers",
+    "table_of_contents"
+  ],
+  "printing": {
+    "double_sided": false,
+    "binding_side": "left"
+  }
+}
