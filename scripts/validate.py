@@ -38,6 +38,7 @@ class FormatValidator:
         self._check_headings()
         self._check_tables()
         self._check_force_clear()
+        self._check_content_compliance()
         self._report()
 
     def _check(self, name, condition, detail_ok, detail_fail):
@@ -276,6 +277,48 @@ class FormatValidator:
                             not has_footer_text,
                             "Footers empty (correct)",
                             "Footer text still present")
+
+    def _check_content_compliance(self):
+        """Check for non-compliant content that should have been cleaned up."""
+        black = RGBColor(0, 0, 0)
+
+        colored_text = 0
+        for para in self.doc.paragraphs:
+            for run in para.runs:
+                if run.font.color and run.font.color.rgb and \
+                   run.font.color.rgb != black and str(run.font.color.rgb) != 'Auto':
+                    colored_text += 1
+        for table in self.doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        for run in para.runs:
+                            if run.font.color and run.font.color.rgb and \
+                               run.font.color.rgb != black and str(run.font.color.rgb) != 'Auto':
+                                colored_text += 1
+
+        self._check("Content: No Colored Text",
+                    colored_text == 0,
+                    f"0 colored text runs (clean)",
+                    f"{colored_text} colored text runs remain")
+
+        colored_cells = 0
+        for table in self.doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    tc = cell._element
+                    tcPr = tc.find(qn('w:tcPr'))
+                    if tcPr is not None:
+                        shd = tcPr.find(qn('w:shd'))
+                        if shd is not None:
+                            fill = shd.get(qn('w:fill'))
+                            if fill and fill.upper() not in ('FFFFFF', 'AUTO', 'NONE', ''):
+                                colored_cells += 1
+
+        self._check("Content: No Colored Cell Backgrounds",
+                    colored_cells == 0,
+                    f"0 colored cell backgrounds (clean)",
+                    f"{colored_cells} colored cell backgrounds remain")
 
     def _report(self):
         print(f"\n{'='*60}")

@@ -64,6 +64,7 @@ class DocxFormatter:
     def run(self, input_path, output_path):
         self.load_document(input_path)
         self._analyze_document_structure()
+        self._audit_and_cleanup()
         self._apply_styles()
         self._apply_page_setup()
         self._apply_title()
@@ -76,6 +77,134 @@ class DocxFormatter:
         self._apply_page_zones_if_needed()
         self.doc.save(output_path)
         return self.modifications
+
+    # ── Document Audit & Cleanup ──────────────────────────
+
+    def _audit_and_cleanup(self):
+        """Audit document for non-compliant content and auto-fix issues."""
+        audit_issues = []
+
+        colored_text = self._audit_colored_text()
+        colored_cells = self._audit_colored_cells()
+        nonstandard_sizes = self._audit_font_sizes()
+
+        if colored_text:
+            audit_issues.append({
+                "issue": "colored_text",
+                "count": colored_text,
+                "detail": f"发现{colored_text}处彩色文字",
+                "action": "已全部改为黑色"
+            })
+            self._cleanup_colored_text()
+
+        if colored_cells:
+            audit_issues.append({
+                "issue": "colored_cell_background",
+                "count": colored_cells,
+                "detail": f"发现{colored_cells}个彩色背景单元格",
+                "action": "已全部清除背景色"
+            })
+            self._cleanup_colored_cells()
+
+        if nonstandard_sizes:
+            audit_issues.append({
+                "issue": "nonstandard_font_size",
+                "count": nonstandard_sizes,
+                "detail": f"发现{nonstandard_sizes}处非标准字号",
+                "action": "将在格式化阶段统一"
+            })
+
+        if audit_issues:
+            self._record("文档审查", f"发现{len(audit_issues)}类问题",
+                         f"彩色文字{colored_text}/彩色背景{colored_cells}/非标准字号{nonstandard_sizes}",
+                         "已自动清理，详见报告")
+
+    def _audit_colored_text(self):
+        """Count runs with non-black font color."""
+        count = 0
+        black = RGBColor(0, 0, 0)
+        for para in self.doc.paragraphs:
+            for run in para.runs:
+                if run.font.color and run.font.color.rgb and \
+                   run.font.color.rgb != black and str(run.font.color.rgb) != 'Auto':
+                    count += 1
+        for table in self.doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        for run in para.runs:
+                            if run.font.color and run.font.color.rgb and \
+                               run.font.color.rgb != black and str(run.font.color.rgb) != 'Auto':
+                                count += 1
+        return count
+
+    def _audit_colored_cells(self):
+        """Count table cells with non-white background shading."""
+        count = 0
+        for table in self.doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    tc = cell._element
+                    tcPr = tc.find(qn('w:tcPr'))
+                    if tcPr is not None:
+                        shd = tcPr.find(qn('w:shd'))
+                        if shd is not None:
+                            fill = shd.get(qn('w:fill'))
+                            if fill and fill.upper() not in ('FFFFFF', 'AUTO', 'NONE', ''):
+                                count += 1
+        return count
+
+    def _audit_font_sizes(self):
+        """Count runs with font sizes not matching template body text size."""
+        body = self.template.get("body_text", {})
+        expected_size = body.get("font_size_pt")
+        if not expected_size:
+            return 0
+        count = 0
+        for para in self.doc.paragraphs:
+            role = "body"
+            for i, p in enumerate(self.doc.paragraphs):
+                if p._p is para._p:
+                    role = self._para_roles[i] if i < len(self._para_roles) else "body"
+                    break
+            if role == "cover":
+                continue
+            for run in para.runs:
+                if run.font.size and abs(run.font.size.pt - expected_size) > 1:
+                    count += 1
+        return count
+
+    def _cleanup_colored_text(self):
+        """Set all non-black text to black."""
+        black = RGBColor(0, 0, 0)
+        for para in self.doc.paragraphs:
+            for run in para.runs:
+                if run.font.color and run.font.color.rgb and \
+                   run.font.color.rgb != black and str(run.font.color.rgb) != 'Auto':
+                    run.font.color.rgb = black
+        for table in self.doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        for run in para.runs:
+                            if run.font.color and run.font.color.rgb and \
+                               run.font.color.rgb != black and str(run.font.color.rgb) != 'Auto':
+                                run.font.color.rgb = black
+
+    def _cleanup_colored_cells(self):
+        """Clear all non-white cell background shading."""
+        for table in self.doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    tc = cell._element
+                    tcPr = tc.find(qn('w:tcPr'))
+                    if tcPr is not None:
+                        shd = tcPr.find(qn('w:shd'))
+                        if shd is not None:
+                            fill = shd.get(qn('w:fill'))
+                            if fill and fill.upper() not in ('FFFFFF', 'AUTO', 'NONE', ''):
+                                shd.set(qn('w:fill'), 'FFFFFF')
+                                shd.set(qn('w:val'), 'clear')
 
     # ── Document Structure Analysis ────────────────────────
 
@@ -1008,9 +1137,20 @@ class DocxFormatter:
         })
 
     def generate_report(self, output_report_path):
+        audit_items = [m for m in self.modifications if m["location"] == "文档审查"]
+        format_items = [m for m in self.modifications if m["location"] != "文档审查"]
+
         report = {
             "industry": self.template.get("industry_name", "Unknown"),
             "standard": self.template.get("standard", ""),
+            "audit_summary": {
+                "issues_found": len(audit_items),
+                "details": audit_items,
+            },
+            "formatting_summary": {
+                "total_modifications": len(format_items),
+                "modifications": format_items,
+            },
             "total_modifications": len(self.modifications),
             "modifications": self.modifications,
         }

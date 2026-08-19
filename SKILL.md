@@ -9,6 +9,10 @@ description: "Auto-normalize .docx formatting to industry standards (government 
 
 This Skill normalizes the formatting of uploaded .docx files to match industry-specific standards. It does NOT modify business text content — only layout properties (margins, fonts, font sizes, line spacing, indentation, alignment, headers/footers, page numbers, table styles).
 
+### Critical Principle: Audit Before Formatting
+
+The Skill does NOT blindly accept and format whatever the user uploads. It first **audits** the document for non-compliant content (colored text, colored cell backgrounds, non-standard font sizes), then **auto-cleans** these issues before applying industry-standard formatting. Issues found and actions taken are reported in the modification report.
+
 ### Supported Industries
 
 | ID | Industry | Standard/Reference |
@@ -99,17 +103,18 @@ Example:
 
 The script will:
 1. Analyze document structure (identify cover page, TOC, body sections)
-2. Modify style definitions (styles.xml) for persistent formatting
-3. Apply page setup (margins, paper size, grid)
-4. Apply title heading formatting (if `title_heading` in template)
-5. Apply body text formatting (font, size, line spacing, indent)
-6. Apply heading formatting (unified style + text pattern detection)
-7. Apply hierarchy font differentiation (黑体/楷体/仿宋 etc.)
-8. Apply header/footer rules (clear or update)
-9. Apply table formatting (borders, cell fonts)
-10. Execute force-clear rules (if dark-bid mode)
-11. Apply per-page-zone formatting (if testing report)
-12. Generate a modification report JSON
+2. **Audit & auto-cleanup**: Detect colored text, colored cell backgrounds, non-standard font sizes; auto-fix by setting text to black, clearing cell backgrounds, and flagging for normalization
+3. Modify style definitions (styles.xml) for persistent formatting
+4. Apply page setup (margins, paper size, grid)
+5. Apply title heading formatting (if `title_heading` in template)
+6. Apply body text formatting (font, size, line spacing, indent)
+7. Apply heading formatting (unified style + text pattern detection)
+8. Apply hierarchy font differentiation (黑体/楷体/仿宋 etc.)
+9. Apply header/footer rules (clear or update)
+10. Apply table formatting (borders, cell fonts)
+11. Execute force-clear rules (if dark-bid mode)
+12. Apply per-page-zone formatting (if testing report)
+13. Generate a modification report JSON (includes audit findings + formatting changes)
 
 ### Step 4: Verify Output (RECOMMENDED)
 
@@ -121,7 +126,7 @@ Run the validation script to check key formatting properties:
   --template templates/<template_name>.json
 ```
 
-This checks: page margins, body font, heading fonts, table formatting, and reports PASS/FAIL for each.
+This checks: page margins, body font, heading fonts, table formatting, **content compliance** (no colored text, no colored cell backgrounds), and reports PASS/FAIL for each.
 
 ### Step 5: Output Results
 
