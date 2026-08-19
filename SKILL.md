@@ -34,6 +34,25 @@ This Skill normalizes the formatting of uploaded .docx files to match industry-s
 
 ## Workflow
 
+### Step 0: Environment Setup (MANDATORY)
+
+Before processing any document, set up the Python environment:
+
+```bash
+# Run the setup script (creates a virtual environment with correct dependencies)
+bash scripts/setup.sh
+```
+
+This script will:
+1. Find a suitable Python (3.11+)
+2. Create an isolated virtual environment in `.venv/`
+3. Install `python-docx` and `lxml<6` (pinned to avoid compatibility issues)
+4. Output the Python path to use for processing
+
+**The script outputs the Python path** — use this path (not `python3`) for all subsequent commands. Example output: `SUCCESS: Python path = /path/to/.venv/bin/python`
+
+If setup fails, see Exception Handling below.
+
 ### Step 1: Receive Input
 
 When the user uploads a .docx file and asks to normalize/fix/standardize its formatting:
@@ -44,7 +63,7 @@ When the user uploads a .docx file and asks to normalize/fix/standardize its for
 
 ### Step 2: Load Template Configuration
 
-Based on the user's selected industry, load the corresponding JSON configuration from `templates/`:
+Based on the user's selected industry, identify the corresponding JSON template file:
 
 | Industry | Template File |
 |----------|--------------|
@@ -57,66 +76,79 @@ Based on the user's selected industry, load the corresponding JSON configuration
 | Academic Paper | `templates/academic_paper.json` |
 | Construction Plan | `templates/construction_plan.json` |
 
-Read the JSON file to obtain the full parameter set: page size, margins, fonts, font sizes, line spacing, indentation, alignment, header/footer rules, table rules, force-clear rules.
+### Step 3: Execute Processing Engine
 
-### Step 3: Generate Processing Configuration
-
-Output a JSON configuration object that the Python processing engine (`scripts/docx_formatter.py`) will consume. The configuration structure:
-
-```json
-{
-  "industry": "government_document",
-  "input_file": "/path/to/input.docx",
-  "output_file": "/path/to/output.docx",
-  "report_file": "/path/to/modification_report.json",
-  "page_setup": {
-    "paper_size": "A4",
-    "margins": { "top": 37, "bottom": 35, "left": 28, "right": 26, "unit": "mm" },
-    "orientation": "portrait"
-  },
-  "body_text": {
-    "font_cn": "仿宋",
-    "font_en": "Times New Roman",
-    "font_size": "16pt",
-    "line_spacing": "fixed",
-    "lines_per_page": 22,
-    "chars_per_line": 28,
-    "first_line_indent": "2chars",
-    "alignment": "justify"
-  },
-  "headings": [ ... ],
-  "hierarchy_fonts": [ ... ],
-  "header_footer": { ... },
-  "tables": { ... },
-  "force_clear": [ ... ]
-}
-```
-
-### Step 4: Execute Python Processing Engine
-
-Run the processing script:
+Run the script using the Python path from Step 0:
 
 ```bash
-python3 scripts/docx_formatter.py --config <config_json_path>
+<PYTHON_PATH> scripts/docx_formatter.py \
+  --input <input.docx> \
+  --template templates/<template_name>.json \
+  --output <output.docx> \
+  --report <modification_report.json>
+```
+
+Example:
+```bash
+/path/to/.venv/bin/python scripts/docx_formatter.py \
+  --input /path/to/document.docx \
+  --template templates/government_document.json \
+  --output /path/to/output_government.docx \
+  --report /path/to/modification_report.json
 ```
 
 The script will:
-1. Read the original .docx using `python-docx`
-2. Extract current formatting information
-3. Apply the template configuration
-4. Execute force-clear rules (if dark-bid mode)
-5. Output the normalized .docx file
-6. Generate a modification report JSON
+1. Analyze document structure (identify cover page, TOC, body sections)
+2. Modify style definitions (styles.xml) for persistent formatting
+3. Apply page setup (margins, paper size, grid)
+4. Apply title heading formatting (if `title_heading` in template)
+5. Apply body text formatting (font, size, line spacing, indent)
+6. Apply heading formatting (unified style + text pattern detection)
+7. Apply hierarchy font differentiation (黑体/楷体/仿宋 etc.)
+8. Apply header/footer rules (clear or update)
+9. Apply table formatting (borders, cell fonts)
+10. Execute force-clear rules (if dark-bid mode)
+11. Apply per-page-zone formatting (if testing report)
+12. Generate a modification report JSON
+
+### Step 4: Verify Output (RECOMMENDED)
+
+Run the validation script to check key formatting properties:
+
+```bash
+<PYTHON_PATH> scripts/validate.py \
+  --input <output.docx> \
+  --template templates/<template_name>.json
+```
+
+This checks: page margins, body font, heading fonts, table formatting, and reports PASS/FAIL for each.
 
 ### Step 5: Output Results
 
-Present the results to the user in this format:
+Present the results to the user:
 
-1. **Confirmation**: Display the selected industry and sub-parameters
-2. **Processing Complete**: Brief summary of what was done
-3. **Modification Report**: Table showing: `序号 | 文档位置 | 修改前 | 修改后`
+1. **Confirmation**: Display the selected industry and template parameters
+2. **Processing Complete**: Brief summary of modifications made
+3. **Modification Report**: Table showing `序号 | 修改位置 | 修改前 | 修改后`
 4. **Output File**: Provide the normalized .docx file path
-5. **Verification Suggestions**: List items the user should manually review
+5. **Verification Report**: Show PASS/FAIL results from validate.py
+6. **Manual Review Suggestions**: List items the user should visually verify
+
+---
+
+## Quick Start (One-Liner)
+
+```bash
+# Setup (run once)
+bash scripts/setup.sh
+
+# Process a document (replace paths)
+$(cat .venv/.python_path 2>/dev/null || echo ".venv/bin/python") scripts/docx_formatter.py \
+  --input "your_document.docx" \
+  --template templates/government_document.json \
+  --output "output.docx" \
+  --report "report.json"
+```
 
 ---
 
@@ -137,13 +169,10 @@ Present the results to the user in this format:
 | Title font | 小标宋体 |
 | Title size | 2号 (22pt) |
 | Text color | Black |
-| Issue org logo color | Red |
-| Page number font | 半角宋体 Arabic numerals |
-| Page number size | 4号 (14pt) |
-| Printing | Double-sided |
-| Binding | Left side |
+| Page number font | 宋体, 4号 (14pt) |
+| Printing | Double-sided, left binding |
 
-**Hierarchy font differentiation (CRITICAL)**:
+**Hierarchy font differentiation**:
 - Level 1 (一、): 黑体 (SimHei)
 - Level 2 (（一）): 楷体 (KaiTi)
 - Level 3 (1.): 仿宋 (FangSong)
@@ -152,111 +181,56 @@ Present the results to the user in this format:
 ### 2. Bidding Dark-Bid
 
 **Force-clear rules (ALL variants)**:
-- Clear ALL bold
-- Clear ALL italic
-- Clear ALL underline
+- Clear ALL bold, italic, underline, strikethrough
 - Clear ALL colored text (set to black)
-- Remove ALL headers
-- Remove ALL footers
-- Remove ALL page numbers
+- Remove ALL headers, footers, page numbers
 - No table of contents
+- Clear hyperlink coloring and custom char spacing/scale
 
-**Jiangsu variant**:
-- Body font: 宋体 (SimSun), 小四号 (12pt)
-- Line spacing: single (单倍)
-- Margins: all sides 2.5cm
-- First line indent: 2 chars
-- Table border: 0.5pt solid
-- Image caption: below image, centered
-
-**Guizhou variant**:
-- Body font: 宋体, 四号 (14pt)
-- Chart text: 宋体, 五号 (10.5pt)
-- No bold, color, italic, underline
-- Hierarchy: Arabic numerals (1, 1.1, 1.1.1, ...)
-
-**Ji'an variant**:
-- Paper: A4, portrait, white bg black text
-- Body font: 宋体, 四号 (14pt)
-- Line spacing: 1.5x
-- Margins: top 2.5cm, bottom 2.5cm, left 3.0cm, right 2.5cm
-- Char spacing: standard, scale 100%
-- First line indent: 2 chars
-- Left aligned
+**Jiangsu variant**: 宋体 小四号 12pt, single spacing, 2.5cm margins all sides
+**Guizhou variant**: 宋体 四号 14pt, chart text 五号 10.5pt, Arabic hierarchy
+**Ji'an variant**: 宋体 四号 14pt, 1.5x spacing, margins top/bottom 2.5cm left 3.0cm right 2.5cm
 
 ### 3. CMA/CNAS Testing Report
 
-**Per-page-zone formatting (CRITICAL — do NOT apply uniform formatting)**:
-
-| Page zone | Position | Font | Size |
-|-----------|----------|------|------|
-| Cover - title | Line 2 | 黑体 bold | 60pt |
-| Cover - report number | Line 3 | 仿宋 | 3号 (16pt) |
-| Cover - info fields | Lower section | 仿宋 | 小三号 (15pt) |
-| Cover - lab name | Last line | 黑体 bold | 1号 (26pt) |
-| Notice page - title | Line 1 | 黑体 bold | 小二号 (18pt) |
-| Notice page - content | Line 2+ | 黑体 | 小三号 (15pt) |
-| Home/Data/Attachment - header | Lines 1-2 | 黑体 bold | 小二号 (18pt) |
-| Home/Data/Attachment - number/page | Line 3 | 仿宋 | 小四号 (12pt) |
-| Home/Data/Attachment - content | Middle | 仿宋 | 小四号 (12pt) |
-| Attachment - content | Middle | 仿宋 bold | 小四号 (12pt) |
-
-- Paper: A4, left binding
-- Continuous page numbering
-- Cover and TOC on separate pages
+**Per-page-zone formatting (CRITICAL)**:
+- Cover: title 黑体 60pt bold, report number 仿宋 三号, lab name 黑体 一号 bold
+- Notice page: title 黑体 小二号 bold, content 黑体 小三号
+- Home/Data/Attachment pages: header 黑体 小二号 bold, content 仿宋 小四号
 
 ### 4. Court Litigation Document
 
 | Parameter | Value |
 |-----------|-------|
-| Paper | A4 (297mm) |
 | Court name font | 宋体 bold, 2号 (22pt), char spacing +2pt |
-| Document name font | 大标宋体 bold, 1号 (26pt), char spacing +2pt |
+| Document name font | 大标宋体 bold, 1号 (26pt) |
 | Case number & body | 仿宋, 3号 (16pt) |
-| Lines per page | 22 |
-| Chars per line | 28 |
-| Top margin (天头) | 30mm |
-| Bottom margin (地脚) | 27mm |
-| Left margin > Right margin | Yes |
-| Page number | 4号 half-width, white font Arabic numerals |
-| Page number position | Single page right, double page left, 1 char from edge |
-| Printing | Double-sided |
-| Multi-page binding | Paste method (no staples) |
+| Top/Bottom margins | 30mm / 27mm |
+| Page number | 4号 white Arabic numerals |
 
 ### 5. Academic Paper (GB/T 7714)
 
 | Parameter | Value |
 |-----------|-------|
-| Paper | A4 |
-| Chinese body font | 宋体 (SimSun), 小四号 (12pt) |
+| Chinese body font | 宋体, 小四号 (12pt) |
 | English/digit font | Times New Roman, 小四号 (12pt) |
 | Line spacing | 1.5x |
-| Title font | 黑体 (SimHei), 小四号 (12pt) |
-| Author name | 宋体 bold, 小四号 |
+| Title font | 黑体, 小四号 (12pt) |
 | Abstract font | 宋体, 五号 (10.5pt) |
-| References title | 黑体/宋体 bold, 三号/四号 |
-| References entries | 宋体/Times New Roman, 五号 (10.5pt) |
-| Alignment | Left-aligned (all elements) |
-| Note title | 黑体, 五号, flush left |
-| Note content | 宋体, 小五号 |
-| Chinese/English font separation | REQUIRED |
+| References | 宋体/TNR, 五号 (10.5pt) |
+| CJK/Latin font separation | REQUIRED |
 
 ### 6. Construction Plan
 
 | Parameter | Value |
 |-----------|-------|
-| Paper | A4 |
-| Left margin | 3.17cm |
-| Top/Right/Bottom margins | 2.5cm |
+| Margins | Left 3.17cm, others 2.5cm |
+| Body font | 宋体, 四号 (14pt) |
+| Title font | 黑体, 三号 (16pt) |
 | Line spacing | 1.5x |
-| Body font | 宋体 (SimSun), 四号 (14pt) |
-| Title font | 黑体 (SimHei), 三号 (16pt) |
-| Heading spacing | 1.5x, 0.5 line before and after |
-| Body spacing | 0 before and after |
-| Numbering | 1, 1.1, 1.1.1 (Arabic decimal) |
+| Hierarchy | Arabic decimal (1, 1.1, 1.1.1) |
 | Western font | Times New Roman |
 | Table text | One size smaller than body |
-| Foreign symbols | Italic for scalars, upright for units/functions |
 
 ---
 
@@ -265,15 +239,23 @@ Present the results to the user in this format:
 1. **Not a .docx file**: "仅支持 .docx 格式文件，请将文件转换为 .docx 后重新上传。"
 2. **File corrupted**: "文档无法解析，文件可能已损坏，请检查后重新上传。"
 3. **No industry selected**: "请选择目标行业类型：1.党政机关公文 2.招投标暗标 3.CMA/CNAS检测报告 4.法院诉讼文书 5.学术论文 6.工程施工方案。（暗标需补充省份参数）"
-4. **Missing python-docx**: "处理引擎缺少依赖，请运行 pip install python-docx 安装。"
+4. **python-docx not installed / lxml crash**:
+   - Run `bash scripts/setup.sh` to create a fresh virtual environment
+   - If lxml still crashes, try: `pip install 'lxml>=4.9,<6' --force-reinstall`
+   - If using system Python, create an isolated venv: `python3 -m venv .venv && .venv/bin/pip install 'python-docx>=0.8.11' 'lxml>=4.9,<6'`
+5. **Document has no Word heading styles**: The script will still process body text and apply hierarchy font rules via text pattern matching.
+6. **Document has nested tables**: The script traverses all table cells including nested tables.
+7. **Paragraphs with no runs (images/objects)**: These are skipped during run-level formatting.
 
 ---
 
 ## Key Technical Constraints
 
 1. **Never modify body text** — only change formatting/layout properties
-2. **Testing reports must use per-page-zone formatting** — not uniform whole-document styling
-3. **Government documents need precise page geometry** — 37mm/28mm margins, 22 lines, 28 chars, 156mm×225mm content area
-4. **Dark-bids need deep traversal** — walk every run, paragraph, table cell, header, footer to clear forbidden formatting
-5. **Academic papers need CJK/Latin font separation** — Chinese uses 宋体, English/digits use Times New Roman
-6. **Modification report must be clear** — tell the user exactly what was changed, before and after values
+2. **Cover page protection** — cover page paragraphs keep their original alignment, only font/size is updated
+3. **Style-level + run-level modification** — both styles.xml definitions AND direct run formatting are updated
+4. **Testing reports must use per-page-zone formatting** — not uniform whole-document styling
+5. **Government documents need precise page geometry** — 37mm/28mm margins, 22 lines, 28 chars
+6. **Dark-bids need deep traversal** — walk every run, paragraph, table cell, header, footer to clear forbidden formatting
+7. **Fixed line spacing requires zero paragraph spacing** — when line_spacing_rule is "fixed", space_before and space_after must be 0
+8. **CJK/Latin font separation** — Chinese uses font_cn (eastAsia), English/digits use font_en (ascii/hAnsi)

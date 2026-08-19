@@ -31,6 +31,7 @@
       "level": 1,
       "name": "一级标题",
       "prefix_pattern": "^第[一二三四五六七八九十]+章",
+      "prefix_patterns": ["^第[一二三四五六七八九十]+章", "^[一二三四五六七八九十]+、"],
       "font_cn": "宋体",
       "font_en": "Times New Roman",
       "font_size_pt": 14,
@@ -46,6 +47,7 @@
       "level": 2,
       "name": "二级标题",
       "prefix_pattern": "^\\d+\\.\\d+",
+      "prefix_patterns": ["^\\d+\\.\\d+", "^第[一二三四五六七八九十]+节"],
       "font_cn": "宋体",
       "font_en": "Times New Roman",
       "font_size_pt": 14,
@@ -61,6 +63,7 @@
       "level": 3,
       "name": "三级标题",
       "prefix_pattern": "^\\d+\\.\\d+\\.\\d+",
+      "prefix_patterns": ["^\\d+\\.\\d+\\.\\d+", "^\\d+\\.\\d+"],
       "font_cn": "宋体",
       "font_en": "Times New Roman",
       "font_size_pt": 14,
@@ -68,6 +71,24 @@
       "bold": true,
       "alignment": "left",
       "outline_level": 3
+    }
+  ],
+  "hierarchy_fonts": [
+    {
+      "level": 1,
+      "prefix_pattern": "^第[一二三四五六七八九十]+章",
+      "prefix_patterns": ["^第[一二三四五六七八九十]+章", "^[一二三四五六七八九十]+、"],
+      "font": "宋体",
+      "font_size_pt": 14,
+      "bold": true
+    },
+    {
+      "level": 2,
+      "prefix_pattern": "^\\d+\\.\\d+",
+      "prefix_patterns": ["^\\d+\\.\\d+", "^第[一二三四五六七八九十]+节"],
+      "font": "宋体",
+      "font_size_pt": 14,
+      "bold": true
     }
   ],
   "title_heading": {

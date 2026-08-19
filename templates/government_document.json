@@ -31,6 +31,14 @@
     "alignment": "justify",
     "text_color": "000000"
   },
+  "title_heading": {
+    "font_cn": "小标宋体",
+    "font_en": "Times New Roman",
+    "font_size_pt": 22,
+    "font_size_name": "二号",
+    "bold": false,
+    "alignment": "center"
+  },
   "headings": [
     {
       "level": 0,
@@ -42,12 +50,37 @@
       "alignment": "center",
       "space_before_lines": 2,
       "space_after_lines": 2
+    },
+    {
+      "level": 1,
+      "name": "一级标题",
+      "font_cn": "黑体",
+      "font_en": "Times New Roman",
+      "font_size_pt": 16,
+      "font_size_name": "三号",
+      "bold": false,
+      "alignment": "left",
+      "space_before_lines": 0.5,
+      "space_after_lines": 0.5
+    },
+    {
+      "level": 2,
+      "name": "二级标题",
+      "font_cn": "楷体",
+      "font_en": "Times New Roman",
+      "font_size_pt": 16,
+      "font_size_name": "三号",
+      "bold": false,
+      "alignment": "left",
+      "space_before_lines": 0.5,
+      "space_after_lines": 0.5
     }
   ],
   "hierarchy_fonts": [
     {
       "level": 1,
       "prefix_pattern": "^[一二三四五六七八九十]+、",
+      "prefix_patterns": ["^[一二三四五六七八九十]+、"],
       "font": "黑体",
       "font_size_pt": 16,
       "font_size_name": "三号",
@@ -56,6 +89,7 @@
     {
       "level": 2,
       "prefix_pattern": "^（[一二三四五六七八九十]+）",
+      "prefix_patterns": ["^（[一二三四五六七八九十]+）", "^\\([一二三四五六七八九十]+\\)"],
       "font": "楷体",
       "font_size_pt": 16,
       "font_size_name": "三号",
@@ -63,7 +97,8 @@
     },
     {
       "level": 3,
-      "prefix_pattern": "^\\d+\\.",
+      "prefix_pattern": "^\\d+\\.\\s",
+      "prefix_patterns": ["^\\d+\\.\\s", "^\\d+、"],
       "font": "仿宋_GB2312",
       "font_size_pt": 16,
       "font_size_name": "三号",
@@ -72,6 +107,7 @@
     {
       "level": 4,
       "prefix_pattern": "^（\\d+）",
+      "prefix_patterns": ["^（\\d+）", "^\\(\\d+\\)"],
       "font": "仿宋_GB2312",
       "font_size_pt": 16,
       "font_size_name": "三号",
@@ -96,7 +132,10 @@
     "border_style": "single",
     "border_width_pt": 0.5,
     "table_alignment": "center",
-    "header_row_bold": true
+    "header_row_bold": true,
+    "cell_font_cn": "仿宋_GB2312",
+    "cell_font_en": "Times New Roman",
+    "cell_font_size_pt": 16
   },
   "images": {
     "caption_position": "below",

@@ -49,6 +49,7 @@
     {
       "level": 1,
       "prefix_pattern": "^第[一二三四五六七八九十]+章",
+      "prefix_patterns": ["^第[一二三四五六七八九十]+章", "^[一二三四五六七八九十]+、"],
       "font": "宋体",
       "font_size_pt": 12,
       "bold": false
@@ -56,6 +57,7 @@
     {
       "level": 2,
       "prefix_pattern": "^第[一二三四五六七八九十]+节",
+      "prefix_patterns": ["^第[一二三四五六七八九十]+节", "^\\d+\\.\\d+", "^（[一二三四五六七八九十]+）"],
       "font": "宋体",
       "font_size_pt": 12,
       "bold": false
@@ -63,6 +65,7 @@
     {
       "level": 3,
       "prefix_pattern": "^\\d+\\.\\d+",
+      "prefix_patterns": ["^\\d+\\.\\d+\\.\\d+", "^\\d+\\.\\d+", "^\\d+\\.\\s"],
       "font": "宋体",
       "font_size_pt": 12,
       "bold": false
@@ -76,7 +79,10 @@
   "tables": {
     "border_style": "single",
     "border_width_pt": 0.5,
-    "table_alignment": "center"
+    "table_alignment": "center",
+    "cell_font_cn": "宋体",
+    "cell_font_en": "宋体",
+    "cell_font_size_pt": 12
   },
   "images": {
     "caption_position": "below",
