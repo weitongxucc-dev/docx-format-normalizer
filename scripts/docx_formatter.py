@@ -76,7 +76,106 @@ class DocxFormatter:
         self._apply_force_clear()
         self._apply_page_zones_if_needed()
         self.doc.save(output_path)
+        self._cleanup_theme_in_output(output_path)
         return self.modifications
+
+    def _cleanup_theme_in_output(self, output_path):
+        """Post-save: clean up ALL color attributes in the docx package."""
+        try:
+            import zipfile
+            import lxml.etree as etree
+            import tempfile
+            import os
+            import shutil
+
+            tmpdir = tempfile.mkdtemp(prefix="docx_color_")
+            temp_out = os.path.join(tmpdir, "out.docx")
+
+            w_ns = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+            a_ns = 'http://schemas.openxmlformats.org/drawingml/2006/main'
+            safe_colors = {'000000', 'FFFFFF', 'AUTO', 'NONE', ''}
+
+            theme_modified = False
+            border_color_count = 0
+            shd_count = 0
+
+            with zipfile.ZipFile(output_path, 'r') as zin:
+                with zipfile.ZipFile(temp_out, 'w', zipfile.ZIP_DEFLATED) as zout:
+                    for item in zin.infolist():
+                        data = zin.read(item.filename)
+
+                        if not item.filename.endswith('.xml'):
+                            zout.writestr(item, data)
+                            continue
+
+                        try:
+                            root = etree.fromstring(data)
+                        except Exception:
+                            zout.writestr(item, data)
+                            continue
+
+                        changed = False
+
+                        if 'theme' in item.filename:
+                            for srgb in root.iter(f'{{{a_ns}}}srgbClr'):
+                                val = srgb.get('val', '')
+                                if val.upper() not in safe_colors:
+                                    srgb.set('val', '000000')
+                                    changed = True
+                                    theme_modified = True
+
+                        if item.filename in ('word/document.xml', 'word/styles.xml') or \
+                           item.filename.startswith('word/header') or \
+                           item.filename.startswith('word/footer'):
+                            for elem in root.iter():
+                                for attr_name in list(elem.attrib.keys()):
+                                    short = attr_name.split('}')[-1] if '}' in attr_name else attr_name
+                                    if short == 'color':
+                                        val = elem.attrib[attr_name]
+                                        if val.upper() not in safe_colors:
+                                            elem.attrib[attr_name] = '000000'
+                                            changed = True
+                                            border_color_count += 1
+                                    elif short == 'fill':
+                                        val = elem.attrib[attr_name]
+                                        if val.upper() not in safe_colors and \
+                                           val.upper() not in ('BFBFBF', 'D9D9D9', 'F2F2F2'):
+                                            elem.attrib[attr_name] = 'FFFFFF'
+                                            changed = True
+                                            shd_count += 1
+
+                            for elem in root.iter():
+                                for attr_name in list(elem.attrib.keys()):
+                                    short = attr_name.split('}')[-1] if '}' in attr_name else attr_name
+                                    if short == 'themeColor':
+                                        val = elem.attrib[attr_name]
+                                        if val not in ('text1', 'dark1', 'background1', 'light1'):
+                                            elem.attrib[attr_name] = 'text1'
+                                            changed = True
+
+                        if changed:
+                            zout.writestr(item, etree.tostring(
+                                root, xml_declaration=True,
+                                encoding='UTF-8', standalone=True))
+                        else:
+                            zout.writestr(item, data)
+
+            shutil.copy2(temp_out, output_path)
+            shutil.rmtree(tmpdir)
+
+            if border_color_count:
+                self._record("文档审查", "边框颜色",
+                             f"{border_color_count}处彩色边框", "已全部改为黑色")
+            if shd_count:
+                self._record("文档审查", "样式阴影",
+                             f"{shd_count}处彩色阴影", "已清除")
+            if theme_modified:
+                self._record("文档审查", "主题配色",
+                             "彩色主题色(accent/hlink)", "已全部改为黑色")
+
+        except Exception as e:
+            self._record("文档审查", "深度颜色清理",
+                         "尝试修改XML", f"错误: {e}")
 
     # ── Document Audit & Cleanup ──────────────────────────
 
@@ -175,8 +274,18 @@ class DocxFormatter:
         return count
 
     def _cleanup_colored_text(self):
-        """Set all non-black text to black."""
+        """Set all non-black text to black, including style-level colors."""
         black = RGBColor(0, 0, 0)
+
+        for style in self.doc.styles:
+            try:
+                if hasattr(style, 'font') and style.font.color and \
+                   style.font.color.rgb and style.font.color.rgb != black and \
+                   str(style.font.color.rgb) != 'Auto':
+                    style.font.color.rgb = black
+            except Exception:
+                pass
+
         for para in self.doc.paragraphs:
             for run in para.runs:
                 if run.font.color and run.font.color.rgb and \
@@ -190,6 +299,17 @@ class DocxFormatter:
                             if run.font.color and run.font.color.rgb and \
                                run.font.color.rgb != black and str(run.font.color.rgb) != 'Auto':
                                 run.font.color.rgb = black
+
+        rPr_template = qn('w:rPr')
+        color_tag = qn('w:color')
+        for style_elem in self.doc.styles.element.iterchildren():
+            rPr = style_elem.find(rPr_template)
+            if rPr is not None:
+                color = rPr.find(color_tag)
+                if color is not None:
+                    val = color.get(qn('w:val'))
+                    if val and val.upper() not in ('000000', 'AUTO', 'NONE', ''):
+                        color.set(qn('w:val'), '000000')
 
     def _cleanup_colored_cells(self):
         """Clear all non-white cell background shading."""

@@ -128,7 +128,30 @@ Run the validation script to check key formatting properties:
 
 This checks: page margins, body font, heading fonts, table formatting, **content compliance** (no colored text, no colored cell backgrounds), and reports PASS/FAIL for each.
 
-### Step 5: Output Results
+### Step 5: Visual Check (RECOMMENDED)
+
+Run the visual check script to verify the output **looks** correct by rendering to images and analyzing for colored content:
+
+```bash
+<PYTHON_PATH> scripts/visual_check.py \
+  --input <output.docx> \
+  --template templates/<template_name>.json \
+  --save-images <output_dir>
+```
+
+This performs:
+1. Converts docx to PDF via LibreOffice
+2. Converts PDF to page images (30 DPI)
+3. Analyzes each page image for colored (non-grayscale) pixels
+4. Reports PASS/FAIL for color detection
+5. Optionally saves page images for AI visual inspection
+
+The visual check catches issues that XML-level validation cannot, such as:
+- Table border colors inherited from table styles
+- Theme accent colors referenced by style definitions
+- Any residual colored visual elements
+
+### Step 6: Output Results
 
 Present the results to the user:
 
