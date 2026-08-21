@@ -35,7 +35,6 @@ if not SOFFICE:
     candidates = [
         "/Applications/LibreOffice.app/Contents/MacOS/soffice",
         os.path.expanduser("~/Applications/LibreOffice.app/Contents/MacOS/soffice"),
-        "/Users/Zhuanz/Library/Application Support/TRAE SOLO CN/ModularData/ai-agent/vm/tools/opt/libreoffice/LibreOffice.app/Contents/MacOS/soffice",
     ]
     if _IS_WIN:
         candidates = [
@@ -52,11 +51,7 @@ PDFTOPPM = os.environ.get("PDFTOPPM", "")
 if not PDFTOPPM:
     PDFTOPPM = shutil.which("pdftoppm") or ""
 if not PDFTOPPM and not _IS_WIN:
-    for candidate in [
-        "/usr/local/bin/pdftoppm",
-        "/opt/homebrew/bin/pdftoppm",
-        "/Users/Zhuanz/Library/Application Support/TRAE SOLO CN/ModularData/ai-agent/vm/tools/bin/pdftoppm",
-    ]:
+    for candidate in ["/usr/local/bin/pdftoppm", "/opt/homebrew/bin/pdftoppm"]:
         if os.path.exists(candidate):
             PDFTOPPM = candidate
             break
@@ -71,8 +66,12 @@ def convert_to_pdf(docx_path, output_dir):
         "--outdir", output_dir, docx_path
     ]
     env = dict(os.environ)
-    env["HOME"] = tempfile.mkdtemp()
-    result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=60)
+    fake_home = tempfile.mkdtemp(prefix="soffice_home_")
+    env["HOME"] = fake_home
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=60)
+    finally:
+        shutil.rmtree(fake_home, ignore_errors=True)
     if result.returncode != 0:
         raise RuntimeError(f"LibreOffice conversion failed: {result.stderr}")
 
@@ -221,48 +220,52 @@ def run_visual_check(docx_path, template_path, save_images_dir=None):
         add_check("Tool: LibreOffice", "WARN", "soffice not found, visual check skipped")
         return results
 
+    keep_images = bool(save_images_dir)
     work_dir = save_images_dir or tempfile.mkdtemp(prefix="docx_visual_")
     os.makedirs(work_dir, exist_ok=True)
 
     try:
-        print("[INFO] Converting to PDF...", flush=True)
-        pdf_path = convert_to_pdf(docx_path, work_dir)
-        add_check("PDF Conversion", "PASS", f"Converted to PDF: {Path(pdf_path).name}")
-    except Exception as e:
-        add_check("PDF Conversion", "FAIL", f"Conversion failed: {e}")
+        try:
+            print("[INFO] Converting to PDF...", flush=True)
+            pdf_path = convert_to_pdf(docx_path, work_dir)
+            add_check("PDF Conversion", "PASS", f"Converted to PDF: {Path(pdf_path).name}")
+        except Exception as e:
+            add_check("PDF Conversion", "FAIL", f"Conversion failed: {e}")
+            return results
+
+        try:
+            print("[INFO] Converting to page images...", flush=True)
+            images = convert_to_images(pdf_path, work_dir, dpi=30)
+            add_check("Image Conversion", "PASS", f"Generated {len(images)} page images (30 DPI)")
+        except Exception as e:
+            add_check("Image Conversion", "FAIL", f"Image generation failed: {e}")
+            return results
+
+        add_check("Page Count", "PASS", f"{len(images)} pages")
+
+        print(f"[INFO] Analyzing {len(images)} pages for colored content...", flush=True)
+        colored_pages = []
+        for i, img_path in enumerate(images):
+            if i % 5 == 0:
+                print(f"  [progress] page {i+1}/{len(images)}", flush=True)
+            color_result = check_image_colors(img_path)
+            if color_result.get("has_color") is True:
+                colored_pages.append(i + 1)
+
+        if colored_pages:
+            add_check("Color Detection", "FAIL",
+                      f"Colored content found on pages: {colored_pages}")
+        else:
+            add_check("Color Detection", "PASS",
+                      "No colored content detected (all pages grayscale)")
+
+        if keep_images:
+            results["page_images"] = images
+
         return results
-
-    try:
-        print("[INFO] Converting to page images...", flush=True)
-        images = convert_to_images(pdf_path, work_dir, dpi=30)
-        add_check("Image Conversion", "PASS", f"Generated {len(images)} page images (30 DPI)")
-        results["page_images"] = images
-    except Exception as e:
-        add_check("Image Conversion", "FAIL", f"Image generation failed: {e}")
-        return results
-
-    add_check("Page Count", "PASS", f"{len(images)} pages")
-
-    print(f"[INFO] Analyzing {len(images)} pages for colored content...", flush=True)
-    colored_pages = []
-    for i, img_path in enumerate(images):
-        if i % 5 == 0:
-            print(f"  [progress] page {i+1}/{len(images)}", flush=True)
-        color_result = check_image_colors(img_path)
-        if color_result.get("has_color") is True:
-            colored_pages.append(i + 1)
-
-    if colored_pages:
-        add_check("Color Detection", "FAIL",
-                  f"Colored content found on pages: {colored_pages}")
-    else:
-        add_check("Color Detection", "PASS",
-                  "No colored content detected (all pages grayscale)")
-
-    if save_images_dir:
-        results["page_images"] = images
-
-    return results
+    finally:
+        if not keep_images:
+            shutil.rmtree(work_dir, ignore_errors=True)
 
 
 def main():
@@ -270,7 +273,7 @@ def main():
     parser.add_argument("--input", required=True, help="Output docx file to check")
     parser.add_argument("--template", required=True, help="Template JSON file")
     parser.add_argument("--save-images", help="Directory to save page images for AI inspection")
-    parser.add_argument("--report", help="Output JSON report path")
+    parser.add_argument("--report", help="Write JSON report to this path (default: no report file)")
     args = parser.parse_args()
 
     print(f"[INFO] Input: {args.input}")
@@ -279,11 +282,10 @@ def main():
 
     results = run_visual_check(args.input, args.template, args.save_images)
 
-    report_path = args.report or os.path.join(
-        os.path.dirname(args.input), "visual_check_report.json"
-    )
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+    # 默认不落盘中间报告，避免把产物混入交付物；仅在显式指定 --report 时写出
+    if args.report:
+        with open(args.report, "w", encoding="utf-8") as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
 
     print(f"\n{'='*60}")
     print(f"  Visual Check Report")
@@ -310,6 +312,9 @@ def main():
         print(f"\n  RESULT: PASSED (with warnings)")
     else:
         print(f"\n  RESULT: ALL CHECKS PASSED")
+
+    # 失败必须返回非零退出码，供 CI/测试流水线识别
+    sys.exit(1 if results["failed"] > 0 else 0)
 
 
 if __name__ == "__main__":

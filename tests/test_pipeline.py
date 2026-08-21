@@ -95,22 +95,32 @@ def test_formatter(python_path, input_path, template_path, output_path):
 
 
 def test_validator(python_path, input_path, template_path):
-    """Run validator and parse results."""
+    """Run validator; judge by return code + stable JSON, not terminal text."""
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        json_path = tmp.name
     result = subprocess.run(
         [python_path, str(SCRIPTS_DIR / "validate.py"),
          "--input", input_path,
-         "--template", template_path],
+         "--template", template_path,
+         "--json", json_path],
         capture_output=True, text=True, timeout=30
     )
-    output = result.stdout + result.stderr
-    if "[FAIL]" in output:
-        fail_count = output.count("[FAIL]")
-        return False, f"{fail_count} validation failures"
-    if "PASS:" not in output:
-        return False, "No PASS results in output"
-    for line in output.strip().split("\n"):
-        if "Total:" in line:
-            return True, line.strip()
+    summary = None
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            summary = json.load(f)
+    except Exception:
+        summary = None
+    finally:
+        if os.path.exists(json_path):
+            os.unlink(json_path)
+
+    # 以退出码 + JSON.failed 为准（修复旧版解析 "[FAIL]" 字符串导致的假阳性）
+    failed = summary.get("failed", 0) if summary else -1
+    if result.returncode != 0 or failed != 0:
+        return False, f"FAIL: {failed} check(s) (exit={result.returncode})"
+    if summary:
+        return True, f"PASS: {summary.get('passed')} FAIL: 0 WARN: {summary.get('warnings')}"
     return True, "OK"
 
 

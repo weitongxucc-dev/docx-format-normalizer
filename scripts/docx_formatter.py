@@ -50,10 +50,27 @@ class DocxFormatter:
         self.doc = None
         self._para_roles = []
         self._title_para_idx = None
+        # 内容保护：默认只格式化、不删除内容对象；删除需显式 --sanitize
+        self.sanitize = config.get("sanitize", False)
+        self.findings = []
 
     @property
     def industry_name(self):
         return self.template.get("industry_name", "Unknown")
+
+    def _finding(self, rule_id, location, category, evidence, confidence,
+                 risk, action, before=""):
+        """Record an audit finding with evidence for traceability."""
+        self.findings.append({
+            "rule_id": rule_id,
+            "location": location,
+            "category": category,
+            "evidence": evidence,
+            "confidence": confidence,
+            "risk": risk,
+            "action": action,
+            "before": before,
+        })
 
     def load_document(self, input_path):
         if not os.path.exists(input_path):
@@ -248,11 +265,14 @@ class DocxFormatter:
             self._cleanup_paragraph_borders()
 
         if cover_issues:
+            action = ("已分级处置：高置信装饰内容清理，表格/图形默认保留并提示"
+                      if not self.sanitize else
+                      "已按 --sanitize 授权清理封面非标准内容")
             audit_issues.append({
                 "issue": "cover_page_nonstandard",
                 "count": len(cover_issues),
                 "detail": "封面存在非标准元素: " + "; ".join(cover_issues),
-                "action": "已清理导航标签和装饰表格"
+                "action": action
             })
             self._cleanup_cover_page()
 
@@ -405,6 +425,52 @@ class DocxFormatter:
 
         return issues
 
+    def _is_decorative_nav_row(self, text):
+        """高分隔符占比、短小的行才视为装饰导航行（避免误删真实语句）。"""
+        seps = set('·•│丨┃╎┆|—-─━ ')
+        if not text:
+            return False
+        sep_count = sum(1 for c in text if c in seps)
+        return sep_count >= 2 and len(text) <= 60 and sep_count / len(text) >= 0.4
+
+    def _first_heading_body_order(self):
+        """返回首个标题段落在 body 子节点中的序号，及其 body 子节点列表。"""
+        body_children = list(self.doc.element.body)
+        for para in self.doc.paragraphs:
+            if self._is_heading_paragraph(para):
+                try:
+                    return body_children.index(para._p), body_children
+                except ValueError:
+                    return None, body_children
+        return None, body_children
+
+    def _cover_objects_before_first_heading(self, kind):
+        """收集首个标题之前的表格/图形，返回带描述的元素列表（供分级处置）。"""
+        heading_order, body_children = self._first_heading_body_order()
+        results = []
+        if heading_order is None:
+            return results
+        if kind == "table":
+            for table in self.doc.tables:
+                tbl = table._element
+                try:
+                    if body_children.index(tbl) < heading_order:
+                        first_cell = ""
+                        if table.rows and table.rows[0].cells:
+                            first_cell = table.rows[0].cells[0].text.strip()
+                        desc = f"{len(table.rows)}行x{len(table.columns)}列 首格:{first_cell[:15]}"
+                        results.append((tbl, desc))
+                except ValueError:
+                    pass
+        elif kind == "drawing":
+            for child in body_children[:heading_order]:
+                for elem in child.findall('.//' + qn('w:drawing')) + \
+                            child.findall('.//' + qn('w:pict')):
+                    is_textbox = elem.find('.//' + qn('w:txbxContent')) is not None
+                    desc = "文本框" if is_textbox else "图片/图形"
+                    results.append((elem, is_textbox, desc))
+        return results
+
     def _cleanup_cover_page(self):
         """Remove non-standard cover page elements and restructure layout."""
         cover_rules = self.template.get("cover_page_rules", {})
@@ -413,92 +479,71 @@ class DocxFormatter:
 
         disallowed = cover_rules.get("disallowed_elements", [])
 
-        # 1. Remove navigation labels
+        # 1. Navigation labels — 仅删除"高分隔符占比"的装饰行；含真实语句的保留并提示
         if "navigation_labels" in disallowed:
-            paras_to_remove = []
             for i, para in enumerate(self.doc.paragraphs):
                 role = self._para_roles[i] if i < len(self._para_roles) else "body"
                 if role != "cover":
                     continue
                 text = para.text.strip()
-                should_remove = False
-                dot_chars = ['·', '•', '│', '丨', '┃', '╎', '┆']
-                for dc in dot_chars:
-                    if text.count(dc) >= 2:
-                        should_remove = True
-                        break
-                if not should_remove and '|' in text and text.count('|') >= 2:
-                    should_remove = True
+                if not text:
+                    continue
+                if self._is_decorative_nav_row(text):
+                    para._element.getparent().remove(para._element)
+                    self._finding("cover-nav-label", f"cover/paragraph-{i}",
+                                  "decorative_navigation",
+                                  ["分隔符占比≥40%", "位于封面", "命中装饰分隔符模式"],
+                                  "high", "content_deletion", "removed", text[:40])
+                    self._record("文档审查", "封面清理",
+                                 f"删除导航标签: {text[:30]}", "已删除")
+                elif any(text.count(dc) >= 2 for dc in '·•│丨┃╎┆|'):
+                    # 有分隔符但含真实文字 → 中置信度，保留并提示
+                    self._finding("cover-nav-label-ambiguous", f"cover/paragraph-{i}",
+                                  "possible_navigation",
+                                  ["含分隔符但同时含真实文字", "无法确认是否导航行"],
+                                  "medium", "none", "preserve_and_warn", text[:40])
+                    self._record("文档审查", "封面提示",
+                                 f"疑似导航行(已保留): {text[:30]}", "保留待确认")
 
-                if should_remove:
-                    paras_to_remove.append((para, text))
-
-            for para, text in paras_to_remove:
-                p_element = para._element
-                p_element.getparent().remove(p_element)
-                self._record("文档审查", "封面清理",
-                             f"删除导航标签: {text[:30]}", "已删除")
-
-        # 2. Remove data tables from cover
+        # 2. Cover tables — 默认一律保留；仅在 --sanitize 且确属封面时才删除
         if "data_tables" in disallowed:
-            first_heading_idx = None
-            for i, para in enumerate(self.doc.paragraphs):
-                if self._is_heading_paragraph(para):
-                    first_heading_idx = i
-                    break
-
-            if first_heading_idx is not None:
-                first_heading_p = self.doc.paragraphs[first_heading_idx]._p
-                body = self.doc.element.body
-                body_children = list(body)
-                try:
-                    heading_order = body_children.index(first_heading_p)
-                except ValueError:
-                    heading_order = len(body_children)
-
-                tables_to_remove = []
-                for table in self.doc.tables:
-                    tbl = table._element
-                    try:
-                        tbl_order = body_children.index(tbl)
-                        if tbl_order < heading_order:
-                            tables_to_remove.append(tbl)
-                    except ValueError:
-                        pass
-
-                for tbl in tables_to_remove:
+            cover_tables = self._cover_objects_before_first_heading("table")
+            for tbl, desc in cover_tables:
+                if self.sanitize:
                     tbl.getparent().remove(tbl)
+                    self._finding("cover-data-table", "cover/table",
+                                  "cover_data_table",
+                                  ["位于首个标题前", "模板禁止封面数据表格", "--sanitize 已授权"],
+                                  "high", "content_deletion", "removed", desc)
                     self._record("文档审查", "封面清理",
-                                 "删除封面数据表格", "已删除")
+                                 f"删除封面表格: {desc[:30]}", "已删除")
+                else:
+                    self._finding("cover-data-table", "cover/table",
+                                  "cover_data_table",
+                                  ["位于首个标题前", "可能是封面参数表也可能是正文内容"],
+                                  "medium", "none", "preserve_and_warn", desc)
+                    self._record("文档审查", "封面提示",
+                                 f"封面发现表格(已保留): {desc[:30]}", "保留待确认")
 
-        # 3. Remove text boxes / shapes from cover
+        # 3. Text boxes / shapes — 默认保留；--sanitize 仅删文本框，绝不删图片(可能是Logo/印章)
         if "text_boxes" in disallowed:
-            first_heading_idx = None
-            for i, para in enumerate(self.doc.paragraphs):
-                if self._is_heading_paragraph(para):
-                    first_heading_idx = i
-                    break
-
-            if first_heading_idx is not None:
-                first_heading_p = self.doc.paragraphs[first_heading_idx]._p
-                body = self.doc.element.body
-                body_children = list(body)
-                try:
-                    heading_order = body_children.index(first_heading_p)
-                except ValueError:
-                    heading_order = len(body_children)
-
-                textbox_removed = 0
-                for child in body_children[:heading_order]:
-                    drawings = child.findall('.//' + qn('w:drawing'))
-                    picts = child.findall('.//' + qn('w:pict'))
-                    for elem in drawings + picts:
-                        elem.getparent().remove(elem)
-                        textbox_removed += 1
-
-                if textbox_removed > 0:
-                    self._record("文档审查", "封面清理",
-                                 f"删除{textbox_removed}个文本框/图形", "已删除")
+            cover_drawings = self._cover_objects_before_first_heading("drawing")
+            for elem, is_textbox, desc in cover_drawings:
+                if is_textbox and self.sanitize:
+                    elem.getparent().remove(elem)
+                    self._finding("cover-textbox", "cover/drawing",
+                                  "cover_textbox",
+                                  ["含 w:txbxContent 文本框", "位于封面", "--sanitize 已授权"],
+                                  "high", "content_deletion", "removed", desc)
+                    self._record("文档审查", "封面清理", "删除封面文本框", "已删除")
+                else:
+                    reason = "图片/Logo/印章一律保留" if not is_textbox else "未启用 --sanitize"
+                    self._finding("cover-drawing", "cover/drawing",
+                                  "cover_drawing",
+                                  [reason, "可能是合法 Logo/示意图/签章"],
+                                  "low", "none", "preserve_and_warn", desc)
+                    self._record("文档审查", "封面提示",
+                                 f"封面发现图形(已保留): {reason}", "保留待确认")
 
         # 4. Restructure cover layout (add spacing if needed)
         layout = cover_rules.get("layout", {})
@@ -1675,53 +1720,91 @@ class DocxFormatter:
 
     # ── Page Zones (Testing Reports) ────────────────────────
 
+    def _para_starts_page(self, para):
+        pPr = para._p.find(qn('w:pPr'))
+        return pPr is not None and pPr.find(qn('w:pageBreakBefore')) is not None
+
+    def _para_ends_page(self, para):
+        # 段内分页符或段内分节符都意味着下一页从新段开始
+        for br in para._p.iter(qn('w:br')):
+            if br.get(qn('w:type')) == 'page':
+                return True
+        pPr = para._p.find(qn('w:pPr'))
+        return pPr is not None and pPr.find(qn('w:sectPr')) is not None
+
+    def _split_into_page_segments(self, paras):
+        """按显式分页把段落切成逻辑页段；无分页符时整体为一段。"""
+        segments = []
+        current = []
+        for para in paras:
+            if current and self._para_starts_page(para):
+                segments.append(current)
+                current = []
+            current.append(para)
+            if self._para_ends_page(para):
+                segments.append(current)
+                current = []
+        if current:
+            segments.append(current)
+        return segments
+
     def _apply_page_zones_if_needed(self):
         page_zones = self.template.get("page_zones")
         if not page_zones:
             return
 
-        zone_boundaries = {}
-        current_zone_id = page_zones[0].get("zone_id") if page_zones else None
+        paras = list(self.doc.paragraphs)
+        if not paras:
+            return
 
-        for i, para in enumerate(self.doc.paragraphs):
-            text = para.text.strip()
-            for zone in page_zones:
-                keywords = zone.get("detection_keywords", [])
-                for kw in keywords:
-                    if kw in text:
-                        current_zone_id = zone.get("zone_id")
-                        zone_boundaries[i] = current_zone_id
-                        break
-                if zone_boundaries.get(i) == current_zone_id and i in zone_boundaries:
-                    break
-            zone_boundaries[i] = current_zone_id
-
+        # 1. 按逻辑页切段；每段独立检测 zone，未命中则沿用上一段的 zone
+        segments = self._split_into_page_segments(paras)
         zone_map = {z.get("zone_id"): z for z in page_zones}
+        seg_zones = []
+        prev_zone_id = page_zones[0].get("zone_id")
+        for seg_idx, seg in enumerate(segments):
+            detected = None
+            for zone in page_zones:
+                if zone.get("detection_position") == "first_page" and seg_idx != 0:
+                    continue
+                hit = False
+                for para in seg:
+                    text = re.sub(r'\s+', '', para.text)
+                    if not text:
+                        continue
+                    for kw in zone.get("detection_keywords", []):
+                        if any(re.sub(r'\s+', '', part) in text
+                               for part in self._split_keywords(kw)):
+                            hit = True
+                            break
+                    if hit:
+                        break
+                if hit:
+                    detected = zone.get("zone_id")
+                    break
+            seg_zones.append(detected or prev_zone_id)
+            if detected:
+                prev_zone_id = detected
+
+        # 2. 每个逻辑页段内按相对序号套用 zone 元素格式
         zone_counts = {}
-
-        for i, para in enumerate(self.doc.paragraphs):
-            if not para.text.strip():
-                continue
-
-            zone_id = zone_boundaries.get(i, current_zone_id)
-            zone = zone_map.get(zone_id)
+        for seg_idx, seg in enumerate(segments):
+            zid = seg_zones[seg_idx]
+            zone = zone_map.get(zid)
             if not zone:
                 continue
-
+            plist = [p for p in seg if p.text.strip()]
+            if not plist:
+                continue
+            total = len(plist)
             elements = zone.get("elements", [])
-            matched = False
-            for elem in elements:
-                if self._match_zone_element(para, elem, i):
-                    self._apply_zone_element(para, elem, zone_id)
-                    matched = True
-                    break
-
-            if not matched:
-                default_elem = self._get_zone_default_element(zone)
-                if default_elem and para.text.strip():
-                    self._apply_zone_element(para, default_elem, zone_id)
-
-            zone_counts[zone_id] = zone_counts.get(zone_id, 0) + 1
+            for rel_idx, para in enumerate(plist):
+                elem = self._match_zone_element(para, elements, rel_idx, total)
+                if elem is None:
+                    elem = self._get_zone_default_element(zone)
+                if elem:
+                    self._apply_zone_element(para, elem, zid)
+                zone_counts[zid] = zone_counts.get(zid, 0) + 1
 
         for zone_id, count in zone_counts.items():
             zone = zone_map.get(zone_id, {})
@@ -1745,35 +1828,54 @@ class DocxFormatter:
             "alignment": "left"
         }
 
-    def _detect_page_zone(self, text, para_idx, total_paras, page_zones, current_zone):
-        for zone in page_zones:
-            keywords = zone.get("detection_keywords", [])
-            position = zone.get("detection_position", "")
+    @staticmethod
+    def _split_keywords(kw):
+        """关键词支持 / 与 、 分隔，任一分段命中即算匹配。"""
+        parts = re.split(r"[/、]", kw)
+        return [p.strip() for p in parts if p.strip()] or [kw]
 
-            if position == "first_page" and para_idx < 10:
-                for kw in keywords:
-                    if kw in text:
-                        return zone
+    def _match_zone_element(self, para, elements, idx, total):
+        """zone 内分级匹配，返回命中的 element 或 None。
 
-            if not position:
-                for kw in keywords:
-                    if kw in text:
-                        return zone
+        idx/total 为 zone 内非空段落的相对序号/总数。
+        优先级：位置+内容双命中 > 上部内容提示 > 纯位置。
+        """
+        text = re.sub(r'\s+', '', para.text)
 
+        def hint_matches(elem):
+            hint = elem.get("content_hint", "")
+            return bool(hint) and any(
+                re.sub(r'\s+', '', p) in text for p in self._split_keywords(hint))
+
+        def pos_matches(elem):
+            position = elem.get("position", "")
+            if position == "line_1":
+                return idx == 0
+            if position == "line_2":
+                return idx == 1
+            if position == "line_3":
+                return idx == 2
+            if position == "lines_1_2":
+                return idx <= 1
+            if position == "last_line":
+                return idx == total - 1
+            if position == "lower_section":
+                # 标题/编号行之后、末行之前的中部区域
+                return 2 < idx < total - 1
+            return False
+
+        for elem in elements:
+            if pos_matches(elem) and hint_matches(elem):
+                return elem
+        # 内容提示仅限分区上部，避免正文中出现关键词被误套标题格式
+        if idx <= 2:
+            for elem in elements:
+                if hint_matches(elem):
+                    return elem
+        for elem in elements:
+            if pos_matches(elem):
+                return elem
         return None
-
-    def _match_zone_element(self, para, elem, idx):
-        content_hint = elem.get("content_hint", "")
-        if content_hint and content_hint in para.text:
-            return True
-
-        position = elem.get("position", "")
-        if position == "line_1" and idx == 0:
-            return True
-        if position == "lines_1_2" and idx <= 1:
-            return True
-
-        return False
 
     def _apply_zone_element(self, para, elem, zone_id=""):
         font = elem.get("font", "仿宋")
@@ -1808,12 +1910,21 @@ class DocxFormatter:
         audit_items = [m for m in self.modifications if m["location"] == "文档审查"]
         format_items = [m for m in self.modifications if m["location"] != "文档审查"]
 
+        removed = [f for f in self.findings if f["action"] == "removed"]
+        preserved = [f for f in self.findings if f["action"] == "preserve_and_warn"]
         report = {
             "industry": self.template.get("industry_name", "Unknown"),
             "standard": self.template.get("standard", ""),
+            "sanitize_mode": self.sanitize,
             "audit_summary": {
                 "issues_found": len(audit_items),
                 "details": audit_items,
+            },
+            "content_findings": {
+                "removed_count": len(removed),
+                "preserved_count": len(preserved),
+                "removed": removed,
+                "preserved_and_warned": preserved,
             },
             "formatting_summary": {
                 "total_modifications": len(format_items),
@@ -1857,6 +1968,8 @@ def main():
     parser.add_argument("--template", help="Template JSON file path")
     parser.add_argument("--output", help="Output docx file path")
     parser.add_argument("--report", help="Output report JSON file path")
+    parser.add_argument("--sanitize", action="store_true",
+                        help="授权删除封面非标准内容（默认只格式化、不删除）")
     args = parser.parse_args()
 
     if args.config:
@@ -1869,6 +1982,7 @@ def main():
             os.path.dirname(os.path.abspath(input_path)),
             build_default_output_name(input_path, template.get("industry_name")))
         report_path = config.get("report_file")
+        sanitize = bool(config.get("sanitize", False))
     else:
         if not args.input or not args.template:
             parser.error("--input and --template are required (or use --config)")
@@ -1878,8 +1992,9 @@ def main():
             os.path.dirname(os.path.abspath(input_path)),
             build_default_output_name(input_path, template.get("industry_name")))
         report_path = args.report
+        sanitize = args.sanitize
 
-    formatter = DocxFormatter({"template": template})
+    formatter = DocxFormatter({"template": template, "sanitize": sanitize})
     try:
         formatter.load_document(input_path)
     except RuntimeError as e:
@@ -1899,6 +2014,18 @@ def main():
     print(f"  - Output file: {output_path}")
     if report_path:
         print(f"  - Report file: {report_path}")
+
+    removed = [f for f in formatter.findings if f["action"] == "removed"]
+    preserved = [f for f in formatter.findings if f["action"] == "preserve_and_warn"]
+    if removed or preserved:
+        print(f"\n--- 内容处置摘要 (sanitize={'开' if sanitize else '关'}) ---")
+        for f in removed:
+            print(f"  [已删除] {f['category']} @ {f['location']}: {f['before']}")
+        for f in preserved:
+            print(f"  [已保留待确认] {f['category']} @ {f['location']}: {f['before']}")
+        if preserved:
+            print(f"  提示: {len(preserved)} 项内容因证据不足被保留，请人工确认是否删除。")
+
     print(f"\n--- Modification Summary ---")
     for m in modifications:
         print(f"  [{m['location']}] {m['detail']}: {m['before']} -> {m['after']}")

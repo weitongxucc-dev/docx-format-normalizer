@@ -369,10 +369,13 @@ class FormatValidator:
                     if text.count(dc) >= 2:
                         nav_found = True
                         break
-            self._check("Cover: No Navigation Labels",
-                        not nav_found,
-                        "No navigation labels found (clean)",
-                        "Navigation labels still present on cover page")
+            # 内容保护：疑似导航行默认保留待确认 → 存在时为 WARN 而非 FAIL
+            if nav_found:
+                self._warn("Cover: Navigation Labels",
+                           "疑似导航行已保留，请人工确认是否删除")
+            else:
+                self._check("Cover: No Navigation Labels", True,
+                            "No navigation labels found (clean)", "")
 
         # Check data tables
         if "data_tables" in disallowed:
@@ -393,10 +396,13 @@ class FormatValidator:
                 except ValueError:
                     pass
 
-            self._check("Cover: No Data Tables",
-                        cover_tables == 0,
-                        "No data tables on cover (clean)",
-                        f"{cover_tables} data table(s) still on cover page")
+            # 内容保护：封面表格默认保留待确认 → 存在时为 WARN 而非 FAIL
+            if cover_tables > 0:
+                self._warn("Cover: Data Tables",
+                           f"{cover_tables} 个封面表格已保留，请人工确认是否删除")
+            else:
+                self._check("Cover: No Data Tables", True,
+                            "No data tables on cover (clean)", "")
 
         # Check date position
         layout = cover_rules.get("layout", {})
@@ -428,6 +434,21 @@ class FormatValidator:
                             f"{empty_count} empty lines between title and date (>= {min_spacing})",
                             f"Only {empty_count} empty lines (need {min_spacing})")
 
+    def to_dict(self):
+        """Stable machine-readable summary for CI/test pipelines."""
+        return {
+            "industry": self.template.get("industry_name", "Unknown"),
+            "standard": self.template.get("standard", ""),
+            "passed": self.passed,
+            "failed": self.failed,
+            "warnings": self.warnings,
+            "ok": self.failed == 0,
+            "checks": [
+                {"status": status, "name": name, "detail": detail}
+                for status, name, detail in self.results
+            ],
+        }
+
     def _report(self):
         print(f"\n{'='*60}")
         print(f"  Format Validation Report")
@@ -445,7 +466,6 @@ class FormatValidator:
 
         if self.failed > 0:
             print(f"\n  RESULT: FAILED - {self.failed} check(s) failed")
-            sys.exit(1)
         elif self.warnings > 0:
             print(f"\n  RESULT: PASSED (with warnings)")
         else:
@@ -455,11 +475,18 @@ class FormatValidator:
 def main():
     parser = argparse.ArgumentParser(description="DOCX Format Validator")
     parser.add_argument("--input", required=True, help="Output docx file to validate")
-    parser.add_argument("--template", required=True, help="Template JSON file")
+    parser.add_argument("--template", required=True, help="Template JSON file path")
+    parser.add_argument("--json", help="Also write machine-readable JSON summary to this path")
     args = parser.parse_args()
 
     validator = FormatValidator(args.input, args.template)
     validator.run()
+
+    if args.json:
+        with open(args.json, "w", encoding="utf-8") as f:
+            json.dump(validator.to_dict(), f, ensure_ascii=False, indent=2)
+
+    sys.exit(1 if validator.failed > 0 else 0)
 
 
 if __name__ == "__main__":

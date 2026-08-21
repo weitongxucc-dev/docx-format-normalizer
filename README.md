@@ -57,25 +57,27 @@ $PYTHON_PATH scripts/visual_check.py \
 
 | 编号 | 模板文件 | 行业 | 标准依据 |
 |------|----------|------|----------|
-| 01 | government_document.json | 党政机关公文 | GB/T 9704-2012 |
-| 02 | bidding_dark_jiangsu.json | 江苏暗标 | 省级规范 |
-| 03 | bidding_dark_guizhou.json | 贵州暗标 | 省级规范 |
-| 04 | bidding_dark_jian.json | 吉安暗标 | 市级规范 |
-| 05 | testing_report.json | CMA/CNAS检测报告 | DB61/T 1327.5-2020 |
-| 06 | court_document.json | 法院诉讼文书 | 最高法院标准 |
-| 07 | academic_paper.json | 学术论文 | GB/T 7714 |
-| 08 | construction_plan.json | 工程施工方案 | 行业惯例 |
+| 01 | government_document.json | 党政机关公文 | GB/T 9704-2012《党政机关公文格式》 |
+| 02 | bidding_dark_jiangsu.json | 江苏暗标 | 江苏省公共资源交易暗标编制规范 |
+| 03 | bidding_dark_guizhou.json | 贵州暗标 | 黔发改法规〔2026〕196号 |
+| 04 | bidding_dark_jian.json | 吉安暗标 | 吉安市发改委暗标盲评通知 |
+| 05 | testing_report.json | CMA/CNAS检测报告 | RB/T 214-2017 + CNAS-CL01 |
+| 06 | court_document.json | 法院诉讼文书 | 法〔2016〕221号文书样式 |
+| 07 | academic_paper.json | 学术论文 | GB/T 7714—2025（过渡期可沿用 2015 版） |
+| 08 | construction_plan.json | 工程施工方案 | GB/T 50502-2009 |
 
 ## 核心特性
 
-### 审查优先工作流
-- 格式化前先扫描文档中的不合规内容
-- 自动清理：彩色文字、彩色单元格、段落装饰线、封面导航标签、封面数据表格
-- 所有发现的问题和操作均记录在修改报告中
+### 精准审查、分级处置、全程可追溯
+- 格式化前先扫描文档中的不合规内容，任何内容修改都由可解释的规则驱动
+- 高置信度问题自动修复：彩色文字/单元格、段落装饰线、高分隔符占比的导航行
+- 中置信度内容（如首个标题前的封面表格/图形）默认保留并提示，
+  经用户确认后可用 `--sanitize` 授权删除
+- 所有处置记录规则 ID、位置、证据链与置信度（`--report`，仅内部自检用）
 
 ### 封面布局合规
 - 校验封面元素位置（标题在上、日期在下）
-- 删除非标准元素（导航标签、数据表格、文本框）
+- 清理装饰性元素（导航标签、装饰线）；表格/图形默认保留待人工确认
 - 重构布局，确保元素间留白符合标准
 - 每个模板定义行业专属的封面布局规则
 
@@ -99,8 +101,8 @@ $PYTHON_PATH scripts/visual_check.py \
 ## 输出物
 
 - **格式化后的 `.docx` 文件**（中文文件名，如 `01_党政机关公文.docx`）
-- **`modification_report.json`** 修改报告，记录所有变更
-- **验证结果**（每项检查的 PASS/FAIL）
+- 修改报告、验证明细、视觉图片等中间产物默认不生成、不交付；
+  仅内部自检时通过 `--report` / `--json` / `--save-images` 显式开启
 
 ## macOS 字体说明
 

@@ -1,7 +1,7 @@
 {
   "industry_id": "construction_plan",
   "industry_name": "工程施工方案",
-  "standard": "行业通行规范",
+  "standard": "GB/T 50502-2009《建筑施工组织设计规范》",
   "page_setup": {
     "paper_size": "A4",
     "paper_width_mm": 210,

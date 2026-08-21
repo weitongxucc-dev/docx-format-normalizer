@@ -1,7 +1,7 @@
 {
   "industry_id": "academic_paper",
   "industry_name": "学术论文（GB/T 7714）",
-  "standard": "GB/T 7714 参考文献著录规则",
+  "standard": "GB/T 7714—2025《信息与文献 参考文献著录规则》（2026-07-01 实施，代替 GB/T 7714—2015；过渡期单位可沿用 2015 版）",
   "page_setup": {
     "paper_size": "A4",
     "paper_width_mm": 210,

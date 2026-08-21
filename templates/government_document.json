@@ -1,7 +1,7 @@
 {
   "industry_id": "government_document",
   "industry_name": "党政机关公文",
-  "standard": "GB/T 9704-2012",
+  "standard": "GB/T 9704-2012《党政机关公文格式》",
   "page_setup": {
     "paper_size": "A4",
     "paper_width_mm": 210,

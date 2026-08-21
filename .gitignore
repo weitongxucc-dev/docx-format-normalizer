@@ -1,8 +1,20 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
-.DS_Store
+*.py[cod]
+.venv/
+.python_path
+
+# 中间产物（默认不生成；若显式开启也不入库）
+modification_report.json
+visual_check_report.json
+validate_result.json
+*.log
+
+# 测试/临时输出
+/output/
+/tmp/
 *.docx
-!templates/*.json
-config.json
-report.json
+!tests/fixtures/*.docx
+
+# 系统文件
+.DS_Store

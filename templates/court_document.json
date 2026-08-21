@@ -1,7 +1,7 @@
 {
   "industry_id": "court_document",
   "industry_name": "法院诉讼文书",
-  "standard": "最高人民法院裁判文书制作规范",
+  "standard": "《人民法院民事裁判文书制作规范》《民事诉讼文书样式》（法〔2016〕221号）",
   "page_setup": {
     "paper_size": "A4",
     "paper_width_mm": 210,

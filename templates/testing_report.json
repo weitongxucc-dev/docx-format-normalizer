@@ -1,7 +1,7 @@
 {
   "industry_id": "testing_report",
   "industry_name": "CMA/CNAS检测报告",
-  "standard": "DB61/T 1327.5-2020 + CMA/CNAS通用规范",
+  "standard": "RB/T 214-2017《检验检测机构资质认定能力评价 检验检测机构通用要求》+ CNAS-CL01（ISO/IEC 17025）",
   "page_setup": {
     "paper_size": "A4",
     "paper_width_mm": 210,
@@ -199,7 +199,7 @@
           "font": "仿宋",
           "font_size_pt": 12,
           "font_size_name": "小四号",
-          "bold": true
+          "bold": false
         }
       ]
     }
