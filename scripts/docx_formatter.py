@@ -78,6 +78,7 @@ class DocxFormatter:
         # 封面清理可能增删段落，必须重算角色，避免索引错位
         self._analyze_document_structure()
         self._normalize_list_paragraphs()
+        self._format_cover_page()
         self._apply_styles()
         self._apply_page_setup()
         self._apply_title()
@@ -966,25 +967,91 @@ class DocxFormatter:
             if role == "empty":
                 continue
             elif role == "cover":
-                self._format_cover_paragraph(para, body)
+                continue  # 封面由 _format_cover_page 专门排版
             elif role == "toc":
                 continue
             else:
                 self._format_paragraph(para, body)
 
-    def _format_cover_paragraph(self, para, body):
-        """Format cover page paragraph: update font/size but preserve alignment."""
-        font_cn = body.get("font_cn", "宋体")
-        font_en = body.get("font_en", "Times New Roman")
-        font_size = body.get("font_size_pt")
-        text_color = body.get("text_color", "000000")
+    def _format_cover_page(self):
+        """Format the cover page to a standard, professional layout.
 
-        for run in para.runs:
-            self._format_run(run, font_cn, font_en, font_size, text_color)
+        Classifies each cover paragraph into an element type (title /
+        subtitle / meta / date), then applies the template's cover element
+        spec (font, size, alignment) plus vertical spacing so the cover is
+        centered and visually distributed instead of left-aligned and crammed.
+        """
+        cover_rules = self.template.get("cover_page_rules", {})
+        layout = cover_rules.get("layout", {})
+        elements = {e.get("name"): e for e in layout.get("elements", [])}
+        distribution = layout.get("vertical_distribution", "balanced")
+        body = self.template.get("body_text", {})
 
-        preview = para.text[:30] + ("..." if len(para.text) > 30 else "")
-        self._record("封面段落", preview, "—",
-                     f"字体→{font_cn} (保持原对齐)")
+        cover_paras = []
+        for i, para in enumerate(self.doc.paragraphs):
+            role = self._para_roles[i] if i < len(self._para_roles) else "body"
+            if role == "cover" and para.text.strip():
+                cover_paras.append(para)
+
+        if not cover_paras:
+            return
+
+        import re as _re
+        date_re = _re.compile(r'(\d{4}[-年/.]\d{1,2}[-月/.]\d{1,2}|\d{4}年|\d{1,2}月)')
+
+        n = len(cover_paras)
+        for idx, para in enumerate(cover_paras):
+            if idx == 0:
+                etype = "title"
+            elif idx == n - 1 and date_re.search(para.text):
+                etype = "date"
+            elif idx == 1:
+                etype = "subtitle"
+            else:
+                etype = "meta"
+
+            spec = elements.get(etype, {})
+            if etype == "title":
+                font_cn = spec.get("font", "小标宋体")
+                size = spec.get("size_pt", 22)
+                align = spec.get("alignment", "center")
+                sb, sa = 72, 24
+            elif etype == "subtitle":
+                font_cn = spec.get("font", "黑体")
+                size = spec.get("size_pt", 16)
+                align = spec.get("alignment", "center")
+                sb, sa = 12, 12
+            elif etype == "date":
+                font_cn = spec.get("font", body.get("font_cn", "仿宋_GB2312"))
+                size = spec.get("size_pt", 14)
+                align = spec.get("alignment", "center")
+                sb, sa = (36 if distribution == "balanced" else 12), 0
+            else:
+                font_cn = spec.get("font", body.get("font_cn", "仿宋_GB2312"))
+                size = spec.get("size_pt", 14)
+                align = spec.get("alignment", "center")
+                sb, sa = 6, 0
+
+            for run in para.runs:
+                self._format_run(run, font_cn, "Times New Roman", size, "000000")
+
+            align_map = {
+                "center": WD_ALIGN_PARAGRAPH.CENTER,
+                "left": WD_ALIGN_PARAGRAPH.LEFT,
+                "right": WD_ALIGN_PARAGRAPH.RIGHT,
+            }
+            para.alignment = align_map.get(align, WD_ALIGN_PARAGRAPH.CENTER)
+
+            pf = para.paragraph_format
+            pf.first_line_indent = None
+            pf.left_indent = None
+            pf.space_before = Pt(sb)
+            pf.space_after = Pt(sa)
+            pf.line_spacing_rule = WD_LINE_SPACING.SINGLE
+
+            preview = para.text[:25] + ("..." if len(para.text) > 25 else "")
+            self._record("封面排版", preview, "左对齐/小字",
+                         f"{etype}→{font_cn} {size}pt 居中")
 
     def _format_paragraph(self, para, fmt):
         font_cn = fmt.get("font_cn", "宋体")
