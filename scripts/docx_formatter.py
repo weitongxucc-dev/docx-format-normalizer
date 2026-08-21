@@ -75,6 +75,9 @@ class DocxFormatter:
         self.load_document(input_path)
         self._analyze_document_structure()
         self._audit_and_cleanup()
+        # 封面清理可能增删段落，必须重算角色，避免索引错位
+        self._analyze_document_structure()
+        self._normalize_list_paragraphs()
         self._apply_styles()
         self._apply_page_setup()
         self._apply_title()
@@ -923,6 +926,29 @@ class DocxFormatter:
 
     # ── Body Text ───────────────────────────────────────────
 
+    def _normalize_list_paragraphs(self):
+        """Remove non-standard list bullets (•/▪/数字编号) by converting
+        List* styles to Normal, then they are formatted as standard body text."""
+        count = 0
+        for para in self.doc.paragraphs:
+            style_name = (para.style.name or "").lower() if para.style else ""
+            if "list" not in style_name:
+                continue
+            try:
+                para.style = self.doc.styles['Normal']
+            except KeyError:
+                pass
+            pPr = para._element.find(qn('w:pPr'))
+            if pPr is not None:
+                numPr = pPr.find(qn('w:numPr'))
+                if numPr is not None:
+                    pPr.remove(numPr)
+            count += 1
+
+        if count:
+            self._record("列表规范化", f"{count}个列表段落",
+                         "项目符号•/编号", "转为标准正文(去除非标符号)")
+
     def _apply_body_text(self):
         body = self.template.get("body_text")
         if not body:
@@ -1327,6 +1353,8 @@ class DocxFormatter:
             if table_cfg.get("table_alignment") == "center":
                 table.alignment = 1
 
+            self._fit_table_to_page(table)
+
             for row in table.rows:
                 for cell in row.cells:
                     for para in cell.paragraphs:
@@ -1357,6 +1385,61 @@ class DocxFormatter:
             elem.set(qn('w:val'), 'single')
             elem.set(qn('w:sz'), str(int(width_pt * 8)))
             elem.set(qn('w:color'), '000000')
+
+    def _fit_table_to_page(self, table):
+        """Scale table column widths so the whole table fits within the page
+        text area (版心), preventing horizontal cutoff on a single page."""
+        page_setup = self.template.get("page_setup", {})
+        margins = page_setup.get("margins", {})
+        left_mm = margins.get("left_mm", 28)
+        right_mm = margins.get("right_mm", 26)
+        page_w_mm = 210 if page_setup.get("paper_size", "A4") == "A4" else 210
+        text_width_twips = int((page_w_mm - left_mm - right_mm) * 56.7)
+
+        tbl = table._tbl
+        tblPr = tbl.tblPr
+        if tblPr is None:
+            tblPr = OxmlElement('w:tblPr')
+            tbl.insert(0, tblPr)
+
+        tblW = tblPr.find(qn('w:tblW'))
+        if tblW is None:
+            tblW = OxmlElement('w:tblW')
+            tblPr.append(tblW)
+        tblW.set(qn('w:type'), 'dxa')
+        tblW.set(qn('w:w'), str(text_width_twips))
+
+        layout = tblPr.find(qn('w:tblLayout'))
+        if layout is None:
+            layout = OxmlElement('w:tblLayout')
+            tblPr.append(layout)
+        layout.set(qn('w:type'), 'fixed')
+
+        grid = tbl.find(qn('w:tblGrid'))
+        if grid is not None:
+            cols = grid.findall(qn('w:gridCol'))
+            if cols:
+                n = len(cols)
+                widths = []
+                for c in cols:
+                    w = c.get(qn('w:w'))
+                    widths.append(int(w) if w else text_width_twips // n)
+                total = sum(widths) or 1
+                new_widths = [max(int(w * text_width_twips / total), 400)
+                              for w in widths]
+                diff = text_width_twips - sum(new_widths)
+                new_widths[-1] += diff
+                for c, w in zip(cols, new_widths):
+                    c.set(qn('w:w'), str(w))
+
+        for row in table.rows:
+            for cell in row.cells:
+                tcPr = cell._tc.find(qn('w:tcPr'))
+                if tcPr is not None:
+                    tcW = tcPr.find(qn('w:tcW'))
+                    if tcW is not None:
+                        tcW.set(qn('w:type'), 'auto')
+                        tcW.set(qn('w:w'), '0')
 
     # ── Force Clear (Dark-bid mode) ─────────────────────────
 
