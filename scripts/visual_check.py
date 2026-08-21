@@ -24,19 +24,34 @@ import tempfile
 from pathlib import Path
 
 
+import shutil
+
+_IS_WIN = sys.platform.startswith("win")
+
 SOFFICE = os.environ.get("SOFFICE", "")
 if not SOFFICE:
-    for candidate in [
+    SOFFICE = shutil.which("soffice") or shutil.which("soffice.exe") or ""
+if not SOFFICE:
+    candidates = [
         "/Applications/LibreOffice.app/Contents/MacOS/soffice",
         os.path.expanduser("~/Applications/LibreOffice.app/Contents/MacOS/soffice"),
         "/Users/Zhuanz/Library/Application Support/TRAE SOLO CN/ModularData/ai-agent/vm/tools/opt/libreoffice/LibreOffice.app/Contents/MacOS/soffice",
-    ]:
+    ]
+    if _IS_WIN:
+        candidates = [
+            r"C:\Program Files\LibreOffice\program\soffice.exe",
+            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\Programs\LibreOffice\program\soffice.exe"),
+        ]
+    for candidate in candidates:
         if os.path.exists(candidate):
             SOFFICE = candidate
             break
 
 PDFTOPPM = os.environ.get("PDFTOPPM", "")
 if not PDFTOPPM:
+    PDFTOPPM = shutil.which("pdftoppm") or ""
+if not PDFTOPPM and not _IS_WIN:
     for candidate in [
         "/usr/local/bin/pdftoppm",
         "/opt/homebrew/bin/pdftoppm",
@@ -46,7 +61,7 @@ if not PDFTOPPM:
             PDFTOPPM = candidate
             break
 
-SIPS = "/usr/bin/sips"
+SIPS = shutil.which("sips") or ("/usr/bin/sips" if os.path.exists("/usr/bin/sips") else "")
 
 
 def convert_to_pdf(docx_path, output_dir):
@@ -91,7 +106,27 @@ def check_image_colors(image_path):
     Returns dict with: has_color (bool), colored_pixel_ratio (float).
     """
     try:
+        # 优先用 Pillow（跨平台）；不可用再退回 macOS 的 sips
+        try:
+            from PIL import Image
+            with Image.open(image_path) as im:
+                im = im.convert("RGB")
+                small = im.resize((im.width // 4 or 1, im.height // 4 or 1))
+                pixels = list(small.getdata())
+            colored = sum(1 for (r, g, b) in pixels
+                          if max(r, g, b) - min(r, g, b) > 20)
+            ratio = colored / max(len(pixels), 1)
+            return {"has_color": ratio > 0.001,
+                    "colored_pixel_ratio": round(ratio, 6),
+                    "image_size": f"{im.width}x{im.height}"}
+        except ImportError:
+            pass
+
         import struct
+
+        if not SIPS:
+            return {"has_color": None, "colored_pixel_ratio": -1,
+                    "error": "no image tool (install Pillow for cross-platform)"}
 
         bmp_path = image_path.replace(".jpg", ".bmp")
         result = subprocess.run(

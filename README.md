@@ -6,23 +6,34 @@
 
 ### 第一步：环境配置（必选）
 
+按操作系统二选一：
+
 ```bash
+# macOS / Linux
 bash scripts/setup.sh
 ```
 
-此脚本会创建独立的 Python 虚拟环境，安装 `python-docx` 和 `lxml<6`（锁定版本以避免 macOS 兼容性问题）。脚本会输出 Python 路径，后续命令需使用该路径。
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+```
+
+脚本会创建独立的 Python 虚拟环境，安装 `python-docx` 和 `lxml<6`（锁定版本以避免兼容性问题），并输出 Python 路径，后续命令需使用该路径。
 
 ### 第二步：格式化文档
 
 ```bash
-# 使用 setup.sh 输出的 Python 路径
+# 使用 setup 输出的 Python 路径
+# macOS/Linux: .venv/bin/python   Windows: .venv\Scripts\python.exe
 PYTHON_PATH=".venv/bin/python"
 
 $PYTHON_PATH scripts/docx_formatter.py \
   --input your_document.docx \
-  --template templates/government_document.json \
-  --output output.docx
+  --template templates/government_document.json
 ```
+
+不传 `--output` 时自动生成中文文件名：`<原文件名>_<行业>_<日期>.docx`，
+如 `AI心灵陪伴机器人_报告_党政机关公文_20260821.docx`。也可用 `--output` 指定。
 
 ### 第三步：验证输出
 

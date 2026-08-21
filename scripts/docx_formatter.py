@@ -1832,6 +1832,22 @@ def load_template(template_path):
         return json.load(f)
 
 
+def _sanitize_for_filename(s):
+    """Replace characters that are invalid in Windows/macOS filenames."""
+    s = re.sub(r'[\\/:*?"<>|]+', '-', s.strip())
+    return s.strip('-_. ')
+
+
+def build_default_output_name(input_path, industry_name):
+    """<原文件名>_<行业>_<YYYYMMDD>.docx，保留原文档身份并标明行业与日期。"""
+    stem = os.path.splitext(os.path.basename(input_path))[0]
+    stem = _sanitize_for_filename(stem)
+    industry = _sanitize_for_filename(industry_name or "规范化")
+    from datetime import date
+    d = date.today().strftime("%Y%m%d")
+    return f"{stem}_{industry}_{d}.docx"
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="DOCX Multi-Industry Document Format Normalizer v2"
@@ -1847,17 +1863,21 @@ def main():
         with open(args.config, "r", encoding="utf-8") as f:
             config = json.load(f)
         input_path = config["input_file"]
-        output_path = config.get("output_file", "output_normalized.docx")
-        report_path = config.get("report_file", "modification_report.json")
         template = load_template(config["template_path"]) if "template_path" in config \
                    else config.get("template", {})
+        output_path = config.get("output_file") or os.path.join(
+            os.path.dirname(os.path.abspath(input_path)),
+            build_default_output_name(input_path, template.get("industry_name")))
+        report_path = config.get("report_file")
     else:
         if not args.input or not args.template:
             parser.error("--input and --template are required (or use --config)")
         input_path = args.input
-        output_path = args.output or "output_normalized.docx"
-        report_path = args.report or "modification_report.json"
         template = load_template(args.template)
+        output_path = args.output or os.path.join(
+            os.path.dirname(os.path.abspath(input_path)),
+            build_default_output_name(input_path, template.get("industry_name")))
+        report_path = args.report
 
     formatter = DocxFormatter({"template": template})
     try:
@@ -1871,12 +1891,14 @@ def main():
     print(f"[INFO] Output: {output_path}")
 
     modifications = formatter.run(input_path, output_path)
-    report = formatter.generate_report(report_path)
+    if report_path:
+        formatter.generate_report(report_path)
 
     print(f"\n[DONE] Processing complete.")
     print(f"  - Total modifications: {len(modifications)}")
     print(f"  - Output file: {output_path}")
-    print(f"  - Report file: {report_path}")
+    if report_path:
+        print(f"  - Report file: {report_path}")
     print(f"\n--- Modification Summary ---")
     for m in modifications:
         print(f"  [{m['location']}] {m['detail']}: {m['before']} -> {m['after']}")

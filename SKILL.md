@@ -56,22 +56,42 @@ description: "Auto-normalize .docx formatting to industry standards (government 
 
 ### 第0步：环境配置（必选）
 
-处理任何文档前，先配置 Python 环境：
+处理任何文档前，先配置 Python 环境（按操作系统二选一）：
 
+**macOS / Linux：**
 ```bash
-# 运行配置脚本（创建带正确依赖的虚拟环境）
 bash scripts/setup.sh
 ```
 
+**Windows（PowerShell）：**
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+```
+
 此脚本会：
-1. 查找合适的 Python（3.11+）
-2. 在 `.venv/` 中创建独立虚拟环境
+1. 查找合适的 Python（3.8+）
+2. 在 `.venv/` 中创建独立虚拟环境（Windows 用 `Scripts\python.exe`，Unix 用 `bin/python`）
 3. 安装 `python-docx` 和 `lxml<6`（锁定版本避免兼容性问题）
 4. 输出用于处理的 Python 路径
 
-**脚本会输出 Python 路径** —— 后续所有命令使用此路径（而非 `python3`）。示例输出：`SUCCESS: Python path = /path/to/.venv/bin/python`
+**脚本会输出 Python 路径** —— 后续所有命令使用此路径。
+- macOS/Linux 示例：`SUCCESS: Python path = /path/to/.venv/bin/python`
+- Windows 示例：`SUCCESS: Python path = C:\path\.venv\Scripts\python.exe`
 
 如配置失败，见下方"异常处理"。
+
+### 输出文件命名规则
+
+不传 `--output` 时，自动生成中文文件名：
+
+```
+<原文件名>_<行业名称>_<YYYYMMDD>.docx
+例：AI心灵陪伴机器人_报告_党政机关公文_20260821.docx
+```
+
+- 保留原文档身份、标明行业与日期，多文档不冲突
+- 自动替换 Windows/macOS 文件名非法字符（`/ \ : * ? " < > |`）
+- 传了 `--output` 则以你指定的为准
 
 ### 第1步：接收输入
 
