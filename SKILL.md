@@ -1,6 +1,6 @@
 ---
 name: "docx-format-normalizer"
-description: "Auto-normalize .docx formatting to industry standards (government docs, bidding dark-bids, CMA/CNAS testing reports, court documents, academic papers, construction plans). Invoke when user uploads a .docx and asks to fix/normalize/standardize document formatting."
+description: "多行业文档格式规范工具：自动将 .docx 文档格式规范化为行业标准（党政机关公文、招投标暗标、CMA/CNAS检测报告、法院诉讼文书、学术论文、工程施工方案）。当用户上传 .docx 并要求修正/规范化/标准化文档格式时调用。"
 ---
 
 # 多行业文档格式规范 Skill
