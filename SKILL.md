@@ -3,7 +3,7 @@ name: "docx-format-normalizer"
 description: "Auto-normalize .docx formatting to industry standards (government docs, bidding dark-bids, CMA/CNAS testing reports, court documents, academic papers, construction plans). Invoke when user uploads a .docx and asks to fix/normalize/standardize document formatting."
 ---
 
-# DOCX 多行业文档格式规范化工具
+# 多行业文档格式规范 Skill
 
 ## 概述
 
@@ -78,8 +78,12 @@ bash scripts/setup.sh
 当用户上传 .docx 文件并要求规范化/修复/标准化格式时：
 
 1. 确认文件为 `.docx` 格式。如不是，告知用户："仅支持 .docx 格式文件，请转换后重新上传。"
-2. 请用户从上述8种支持格式中选择目标行业类型。
+2. **先向用户列出可生成的行业**（党政机关公文 / 招投标暗标 / CMA检测报告 /
+   法院诉讼文书 / 学术论文 / 工程施工方案），**等用户选定目标行业后再生成**。
 3. 如用户选择暗标类型，确认省份/城市变体。
+
+> **重要**：默认只生成用户选定的那一个行业，**不要一次性生成全部8个**。
+> 仅当用户明确要求"对比测试/全部生成"时才批量处理。
 
 ### 第2步：加载模板配置
 
