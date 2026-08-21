@@ -104,17 +104,18 @@ bash scripts/setup.sh
 <PYTHON_PATH> scripts/docx_formatter.py \
   --input <input.docx> \
   --template templates/<template_name>.json \
-  --output <output.docx> \
-  --report <modification_report.json>
+  --output <output.docx>
 ```
+
+> `--report <modification_report.json>` 为**可选**参数，仅内部自检时使用，
+> 默认不要加，避免向用户目录输出报告文件。
 
 示例：
 ```bash
 /path/to/.venv/bin/python scripts/docx_formatter.py \
   --input /path/to/document.docx \
   --template templates/government_document.json \
-  --output /path/to/output_government.docx \
-  --report /path/to/modification_report.json
+  --output /path/to/01_党政机关公文.docx
 ```
 
 脚本执行流程：
@@ -169,14 +170,21 @@ bash scripts/setup.sh
 
 ### 第6步：输出结果
 
-向用户呈现结果：
+**交付给用户的内容必须精简**——用户只需要最终的 .docx 和一句简要说明，
+不需要看一堆中间报告文件。
 
-1. **确认信息**：显示选择的行业和模板参数
-2. **处理完成**：简要说明修改项数
-3. **修改报告**：表格展示 `序号 | 修改位置 | 修改前 | 修改后`
-4. **输出文件**：提供规范化后的 .docx 文件路径
-5. **验证报告**：显示 validate.py 的 PASS/FAIL 结果
-6. **人工检查建议**：列出用户应视觉确认的项目
+1. **输出文件**：只提供规范化后的 .docx 文件路径（中文文件名）
+2. **简要说明**：一句话说明行业类型 + 主要修改项数
+3. **人工检查建议**：列 1-3 条用户应视觉确认的项目（如封面、表格）
+
+**不要向用户呈现的中间产物**（仅供内部验证，默认不生成到用户目录）：
+- `modification_report.json`、`visual_check_report.json` 等报告文件
+- validate.py 的逐项 PASS/FAIL 明细
+- 视觉检查渲染的页面图片
+
+> 报告与验证只在内部用于自检。除非用户明确索要，不要把 report.json
+> 等文件放进交付目录或逐条展示。运行 formatter 时不加 `--report` 参数
+> 即不会生成报告文件。
 
 ---
 
